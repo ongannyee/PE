@@ -1,65 +1,35 @@
-import { useState, useEffect } from "react";
-import { fetchProjects, deleteProject } from "./API/ProjectAPI";
-import AddProject from "./components/AddProject";
-import ProjectSearchBar from "./components/ProjectSearchBar";
-import ProjectTable from "./components/ProjectTable";
+import { useState } from "react";
+import Header from "./components/Header";
+import Sidebar from "./components/Sidebar";
+import ProjectPage from "./components/ProjectPage";
+import AddProjectPage from "./components/AddProjectPage";
 
 function App() {
-  const [search, setSearch] = useState("");
-  const [filtered, setFiltered] = useState([]);
-  const [projects, setProjects] = useState([]);
+  const [activePage, setActivePage] = useState("projects"); // default page
 
-  useEffect(() => {
-    fetchData();
-  });
-
-  const handleSearch = () => {
-    const sorted = [...projects].sort((a, b) => a.projectId - b.projectId);
-    setFiltered(
-      sorted.filter((project) =>
-        project.title.toLowerCase().includes(search.toLowerCase())
-      )
-    );
-  };
-
-  const fetchData = async () => {
-    try {
-      const data = await fetchProjects();
-      const sorted = [...data].sort((a, b) => a.projectId - b.projectId);
-      setProjects(sorted);
-      setFiltered(sorted);
-    } catch (error) {
-      console.error("Error fetching projects:", error);
+  const renderContent = () => {
+    switch (activePage) {
+      case "projects":
+        return <ProjectPage />;
+      case "add-project":
+        return <AddProjectPage />;
+      default:
+        return <ProjectPage />;
     }
   };
 
-  const handleDeleteProject = async (projectId) => {
-    await deleteProject(projectId);
-    const updatedProjects = projects.filter((b) => b.projectId !== projectId);
-    setProjects(updatedProjects);
-    setFiltered(updatedProjects);
-  };
-
-  const handleReset = () => {
-    setSearch("");
-    setFiltered(projects);
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <h1 className="text-4xl font-bold mb-8 text-center text-blue-700">
-        Project Store
-      </h1>
-      <ProjectSearchBar
-        search={search}
-        setSearch={setSearch}
-        onSearch={handleSearch}
-        onReset={handleReset}
-      />
-      <ProjectTable projects={filtered} onDelete={handleDeleteProject} />
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <Sidebar activePage={activePage} setActivePage={setActivePage} />
 
-      <div className="mt-12">
-        <AddProject />
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <Header title="Project Management Dashboard" />
+
+        {/* Page Content */}
+        <main className="flex-1 p-6 overflow-auto">{renderContent()}</main>
       </div>
     </div>
   );
