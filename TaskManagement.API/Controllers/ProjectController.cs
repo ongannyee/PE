@@ -27,7 +27,7 @@ namespace TaskManagement.API.Controllers
                     ProjectGoal = project.ProjectGoal,
                     StartDate = project.StartDate,
                     EndDate = project.EndDate,
-                    IsArchived = project.IsArchived
+                    ArchivedName = project.ArchivedName
 
                 });
             }
@@ -51,12 +51,11 @@ namespace TaskManagement.API.Controllers
                 ProjectGoal = project.ProjectGoal,
                 StartDate = project.StartDate,
                 EndDate = project.EndDate,
-                IsArchived = project.IsArchived
+                ArchivedName = project.ArchivedName
             };
             return Ok(ProjectDTO);
         }
         [HttpPost]
-        [Route("{projectId:int}")]
         public IActionResult AddProject([FromBody] CreateProjectRequestDTO createProjectRequestDTO)
         {
             if (createProjectRequestDTO == null)
@@ -71,7 +70,7 @@ namespace TaskManagement.API.Controllers
                 ProjectGoal = createProjectRequestDTO.ProjectGoal,
                 StartDate = createProjectRequestDTO.StartDate,
                 EndDate = createProjectRequestDTO.EndDate,
-                IsArchived = createProjectRequestDTO.IsArchived
+                ArchivedName = createProjectRequestDTO.ArchivedName
             };
             _context.Projects.Add(project);
             _context.SaveChanges();
@@ -92,7 +91,7 @@ namespace TaskManagement.API.Controllers
             project.ProjectGoal = updateProjectRequestDTO.ProjectGoal;
             project.StartDate = updateProjectRequestDTO.StartDate;
             project.EndDate = updateProjectRequestDTO.EndDate;
-            project.IsArchived = updateProjectRequestDTO.IsArchived;
+            project.ArchivedName = updateProjectRequestDTO.ArchivedName;
             _context.SaveChanges();
             return Ok(project);
         }
