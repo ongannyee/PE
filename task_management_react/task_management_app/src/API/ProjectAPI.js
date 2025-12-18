@@ -33,7 +33,7 @@ export const editProject = async (projectId,updatedProject) => {
         throw error;
     }
 };
-export const deletetProject = async (projectId) => {
+export const deleteProject = async (projectId) => {
     try {
         const response = await axios.delete(`${API_URL}/${projectId}`);
         return response.data;
