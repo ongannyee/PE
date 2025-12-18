@@ -2,6 +2,7 @@ function Sidebar({ activePage, setActivePage }) {
   const menuItems = [
     { id: "projects", label: "Project List" },
     { id: "add-project", label: "Add Project" },
+    { id: "project-timeline",label: "Timeline"},
   ];
 
   return (

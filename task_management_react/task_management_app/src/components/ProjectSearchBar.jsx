@@ -1,9 +1,9 @@
 function ProjectSearchBar({ search, setSearch, onSearch, onReset }) {
   return (
-    <div className="flex justify-center mb-6 gap-2">
+    <div className="flex justify-start mb-6 gap-2">
       <input
         type="text"
-        placeholder="Search by title..."
+        placeholder="Search by Name..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         onKeyDown={(e) => {

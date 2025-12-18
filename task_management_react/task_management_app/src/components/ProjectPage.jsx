@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { fetchProjects, deleteProject } from "../API/ProjectAPI";
+import { fetchProjects, deleteProject, editProject } from "../API/ProjectAPI";
 import ProjectSearchBar from "../components/ProjectSearchBar";
 import ProjectTable from "../components/ProjectTable";
+import UpdateProjectModal from "../components/UpdateProjectModal";
 
 function ProjectPage() {
   const [search, setSearch] = useState("");
-  const [filtered, setFiltered] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -24,19 +26,16 @@ function ProjectPage() {
   };
 
   const handleSearch = () => {
-    const sorted = [...projects].sort((a, b) => a.projectId - b.projectId);
+    const keyword = search.trim().toLowerCase();
+    if (!keyword) {
+      setFiltered(projects);
+      return;
+    }
     setFiltered(
-      sorted.filter((project) =>
-        project.title.toLowerCase().includes(search.toLowerCase())
+      projects.filter((project) =>
+        project.projectName.toLowerCase().includes(keyword)
       )
     );
-  };
-
-  const handleDeleteProject = async (projectId) => {
-    await deleteProject(projectId);
-    const updatedProjects = projects.filter((b) => b.projectId !== projectId);
-    setProjects(updatedProjects);
-    setFiltered(updatedProjects);
   };
 
   const handleReset = () => {
@@ -44,15 +43,48 @@ function ProjectPage() {
     setFiltered(projects);
   };
 
+  const handleDeleteProject = async (projectId) => {
+    await deleteProject(projectId);
+    const updatedProjects = projects.filter((p) => p.projectId !== projectId);
+    setProjects(updatedProjects);
+    setFiltered(updatedProjects);
+  };
+
+  const handleProjectClick = (project) => {
+    setSelectedProject(project); // open modal
+  };
+
+  const handleProjectUpdate = async (projectId, updatedProject) => {
+    await editProject(projectId, updatedProject);
+    setSelectedProject(null); // close modal
+    fetchData(); // refresh list
+  };
+
   return (
-    <div>
+    <div className="relative min-h-screen">
+      {/* Search bar */}
       <ProjectSearchBar
         search={search}
         setSearch={setSearch}
         onSearch={handleSearch}
         onReset={handleReset}
       />
-      <ProjectTable projects={filtered} onDelete={handleDeleteProject} />
+
+      {/* Project table */}
+      <ProjectTable
+        projects={filtered}
+        onDelete={handleDeleteProject}
+        onClick={handleProjectClick}
+      />
+
+      {/* Modal overlay */}
+      {selectedProject && (
+        <UpdateProjectModal
+          project={selectedProject}
+          onClose={() => setSelectedProject(null)}
+          onUpdate={handleProjectUpdate}
+        />
+      )}
     </div>
   );
 }

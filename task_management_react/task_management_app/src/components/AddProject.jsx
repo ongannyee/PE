@@ -8,17 +8,14 @@ function AddProject() {
     projectGoal: "",
     startDate: "",
     endDate: "",
-    isArchived: false,
+    archivedName: "",
   });
 
   const [message, setMessage] = useState("");
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm({
-      ...form,
-      [name]: type === "checkbox" ? checked : value,
-    });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
   };
 
   const handleSubmit = async (e) => {
@@ -26,7 +23,7 @@ function AddProject() {
     try {
       await axios.post("http://localhost:5017/api/project", {
         ...form,
-        projectId: parseInt(form.projectId), // convert to integer
+        projectId: parseInt(form.projectId),
       });
       setMessage("Project added successfully!");
       setForm({
@@ -35,7 +32,7 @@ function AddProject() {
         projectGoal: "",
         startDate: "",
         endDate: "",
-        isArchived: false,
+        archivedName: "",
       });
     } catch (error) {
       console.error(error);
@@ -44,90 +41,100 @@ function AddProject() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-100 flex items-start justify-center py-10">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-8 rounded shadow-md w-full max-w-md"
+        className="bg-white p-10 rounded shadow-md w-full max-w-4xl"
       >
-        <h2 className="text-2xl font-bold mb-6 text-blue-700 text-center">
+        <h2 className="text-3xl font-bold mb-8 text-blue-700 text-center">
           Add New Project
         </h2>
 
-        <div className="mb-4">
-          <label className="block mb-1">Project ID</label>
-          <input
-            name="projectId"
-            type="number"
-            value={form.projectId}
-            onChange={handleChange}
-            required
-            className="w-full border px-3 py-2 rounded"
-          />
+        <div className="grid grid-cols-2 gap-6">
+          {/* Project ID */}
+          <div>
+            <label className="block mb-2 font-medium">Project ID</label>
+            <input
+              name="projectId"
+              value={form.projectId}
+              onChange={handleChange}
+              required
+              className="w-full border px-4 py-3 rounded"
+            />
+          </div>
+          
+          {/* Project Name */}
+          <div>
+            <label className="block mb-2 font-medium">Project Name</label>
+            <input
+              name="projectName"
+              value={form.projectName}
+              onChange={handleChange}
+              required
+              className="w-full border px-4 py-3 rounded"
+            />
+          </div>
         </div>
 
-        <div className="mb-4">
-          <label className="block mb-1">Project Name</label>
-          <input
-            name="projectName"
-            value={form.projectName}
-            onChange={handleChange}
-            required
-            className="w-full border px-3 py-2 rounded"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block mb-1">Project Goal</label>
-          <input
+        {/* Project Goal (textarea, bigger) */}
+        <div className="mt-6">
+          <label className="block mb-2 font-medium">Project Goal</label>
+          <textarea
             name="projectGoal"
             value={form.projectGoal}
             onChange={handleChange}
             required
-            className="w-full border px-3 py-2 rounded"
+            rows={6}
+            className="w-full border px-4 py-3 rounded resize-none"
+            placeholder="Describe the project goals..."
           />
         </div>
 
-        <div className="mb-4">
-          <label className="block mb-1">Start Date</label>
-          <input
-            name="startDate"
-            type="date"
-            value={form.startDate}
-            onChange={handleChange}
-            required
-            className="w-full border px-3 py-2 rounded"
-          />
+        {/* Dates */}
+        <div className="grid grid-cols-2 gap-6 mt-6">
+          <div>
+            <label className="block mb-2 font-medium">Start Date</label>
+            <input
+              name="startDate"
+              type="date"
+              value={form.startDate}
+              onChange={handleChange}
+              required
+              className="w-full border px-4 py-3 rounded"
+            />
+          </div>
+          <div>
+            <label className="block mb-2 font-medium">End Date</label>
+            <input
+              name="endDate"
+              type="date"
+              value={form.endDate}
+              onChange={handleChange}
+              className="w-full border px-4 py-3 rounded"
+            />
+          </div>
         </div>
-
-        <div className="mb-4">
-          <label className="block mb-1">End Date</label>
-          <input
-            name="endDate"
-            type="date"
-            value={form.endDate}
-            onChange={handleChange}
-            className="w-full border px-3 py-2 rounded"
-          />
-        </div>
-
-        <div className="mb-6 flex items-center">
-          <input
-            name="isArchived"
-            type="checkbox"
-            checked={form.isArchived}
-            onChange={handleChange}
-            className="mr-2"
-          />
-          <label>Is Archived?</label>
-        </div>
-
+        <div className="grid grid-cols-2 gap-6">
+          {/* Archived Name */}
+          <div>
+            <label className="block mb-2 font-medium">Archived Name</label>
+            <input
+              name="archivedName"
+              value={form.archivedName}
+              onChange={handleChange}
+              required
+              className="w-full border px-4 py-3 rounded"
+            />
+        </div></div>
+        {/* Submit Button */}
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+          className="w-full bg-blue-600 text-white py-3 rounded mt-8 hover:bg-blue-700 transition text-lg font-medium"
         >
           Add Project
         </button>
 
+        {/* Message */}
         {message && (
           <div
             className={`mt-4 text-center ${

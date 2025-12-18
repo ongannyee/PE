@@ -1,21 +1,26 @@
-function ProjectTableItem({ project, idx, onDelete }) {
+import { FaTrash } from "react-icons/fa"; // Using react-icons for trash icon
+
+function ProjectTableItem({ project, onDelete, onClick }) {
   return (
-    <tr className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-      <td className="py-2 px-4 text-center">{project.projectId}</td>
-      <td className="py-2 px-4">{project.title}</td>
-      <td className="py-2 px-4">{project.author}</td>
-      <td className="py-2 px-4">{project.genre}</td>
-      <td className="py-2 px-4 text-right">{project.price.toFixed(2)}</td>
+    <tr
+      className="border-b hover:bg-gray-100 cursor-pointer"
+      onClick={() => onClick && onClick(project)}
+    >
+      <td className="py-2 px-4">{project.projectId}</td>
+      <td className="py-2 px-4">{project.projectName}</td>
+      <td className="py-2 px-4">{project.startDate?.split("T")[0]}</td>
+      <td className="py-2 px-4">{project.endDate?.split("T")[0] || "-"}</td>
+      <td className="py-2 px-4">{project.isArchived ? "Yes" : "No"}</td>
       <td className="py-2 px-4 text-center">
-        {project.publishedDate.split("T")[0]}
-      </td>
-      <td className="py-2 px-4 text-center flex gap-2 justify-center">
         <button
-          onClick={() => onDelete(project.projectId)}
-          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700 transition"
-          style={{ width: 80 }}
+          onClick={(e) => {
+            e.stopPropagation(); // prevent row click
+            onDelete && onDelete(project.projectId);
+          }}
+          className="text-red-600 hover:text-red-800 transition"
+          title="Delete Project"
         >
-          Delete
+          <FaTrash />
         </button>
       </td>
     </tr>
