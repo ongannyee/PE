@@ -1,6 +1,6 @@
-namespace TaskManagement.API.Models.Domain
+namespace TaskManagement.API.Models.DTO
 {
-    public class Project
+    public class UpdateProjectRequestDTO
     {
         public Guid Id {get;set;}
         public int ProjectId {get;set;}
