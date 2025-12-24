@@ -8,16 +8,52 @@ import ProjectTimelinePage from "./components/ProjectTimeLine";
 function App() {
   const [activePage, setActivePage] = useState("projects"); // default page
 
+  // ---------------- Project state ----------------
+  const [projects, setProjects] = useState([
+    { projectId: 1, projectName: "Project A", isArchived: false, startDate: "2025-01-01", endDate: "2025-06-30" },
+    { projectId: 2, projectName: "Project B", isArchived: false, startDate: "2025-02-01", endDate: "2025-07-31" },
+    { projectId: 3, projectName: "Project C", isArchived: false, startDate: "2025-03-01", endDate: "2025-08-31" },
+  ]);
+
+  const handleArchive = (id) => {
+    setProjects(prev =>
+      prev.map(p => p.projectId === id ? { ...p, isArchived: true } : p)
+    );
+  };
+
+  const handleDelete = (id) => {
+    setProjects(prev => prev.filter(p => p.projectId !== id));
+  };
+
+  const handleClick = (project) => {
+    alert(`Clicked project: ${project.projectName}`);
+  };
+
+  // ---------------- Render Pages ----------------
   const renderContent = () => {
     switch (activePage) {
       case "projects":
-        return <ProjectPage />;
+        return (
+          <ProjectPage
+            projects={projects}
+            onArchive={handleArchive}
+            onDelete={handleDelete}
+            onClick={handleClick}
+          />
+        );
       case "add-project":
         return <AddProjectPage />;
       case "project-timeline":
-        return <ProjectTimelinePage/>;
+        return <ProjectTimelinePage />;
       default:
-        return <ProjectPage />;
+        return (
+          <ProjectPage
+            projects={projects}
+            onArchive={handleArchive}
+            onDelete={handleDelete}
+            onClick={handleClick}
+          />
+        );
     }
   };
 
@@ -32,7 +68,7 @@ function App() {
         <Header title="Project Management Dashboard" />
 
         {/* Page Content */}
-        <main className="flex-1 p-6 overflow-auto">{renderContent()}</main>
+        <main className=" flex-1 overflow-auto">{renderContent()}</main>
       </div>
     </div>
   );

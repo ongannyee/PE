@@ -1,6 +1,6 @@
 function ProjectSearchBar({ search, setSearch, onSearch, onReset }) {
   return (
-    <div className="flex justify-start mb-6 gap-2">
+    <div className="flex justify-start gap-2 pt-4 pl-4 mb-6">
       <input
         type="text"
         placeholder="Search by Name..."

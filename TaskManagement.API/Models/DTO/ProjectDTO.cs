@@ -8,7 +8,7 @@ namespace TaskManagement.API.Models.DTO
         public required string ProjectGoal {get;set;}
         public DateTime StartDate {get;set;}
         public DateTime ?EndDate{get;set;}
-        public required string ArchivedName {get;set;}
+        public bool IsArchived {get;set;}
 
 
     }

@@ -27,7 +27,7 @@ namespace TaskManagement.API.Controllers
                     ProjectGoal = project.ProjectGoal,
                     StartDate = project.StartDate,
                     EndDate = project.EndDate,
-                    ArchivedName = project.ArchivedName
+                    IsArchived = project.IsArchived
 
                 });
             }
@@ -51,7 +51,7 @@ namespace TaskManagement.API.Controllers
                 ProjectGoal = project.ProjectGoal,
                 StartDate = project.StartDate,
                 EndDate = project.EndDate,
-                ArchivedName = project.ArchivedName
+                IsArchived = project.IsArchived
             };
             return Ok(ProjectDTO);
         }
@@ -70,7 +70,7 @@ namespace TaskManagement.API.Controllers
                 ProjectGoal = createProjectRequestDTO.ProjectGoal,
                 StartDate = createProjectRequestDTO.StartDate,
                 EndDate = createProjectRequestDTO.EndDate,
-                ArchivedName = createProjectRequestDTO.ArchivedName
+                IsArchived = createProjectRequestDTO.IsArchived
             };
             _context.Projects.Add(project);
             _context.SaveChanges();
@@ -91,7 +91,7 @@ namespace TaskManagement.API.Controllers
             project.ProjectGoal = updateProjectRequestDTO.ProjectGoal;
             project.StartDate = updateProjectRequestDTO.StartDate;
             project.EndDate = updateProjectRequestDTO.EndDate;
-            project.ArchivedName = updateProjectRequestDTO.ArchivedName;
+            project.IsArchived = updateProjectRequestDTO.IsArchived;
             _context.SaveChanges();
             return Ok(project);
         }
@@ -108,5 +108,21 @@ namespace TaskManagement.API.Controllers
             _context.SaveChanges();
             return NoContent();
         }
+        [HttpPut]
+[Route("{projectId:int}/archive")]
+public IActionResult ArchiveProject([FromRoute] int projectId)
+{
+    var project = _context.Projects.FirstOrDefault(p => p.ProjectId == projectId);
+    if (project == null)
+    {
+        return NotFound();
+    }
+
+    project.IsArchived = true;
+    _context.SaveChanges();
+
+    return Ok(new { Message = "Project archived successfully", ProjectId = project.ProjectId });
+}
+
     }
 }
