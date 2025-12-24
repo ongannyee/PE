@@ -81,7 +81,7 @@ function ProjectCalendarPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-5xl font-bold text-gray-800 mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-5xl font-bold text-blue-600 p-4">
             Project Calendar
           </h1>
           <p className="text-gray-600">View your projects timeline</p>
