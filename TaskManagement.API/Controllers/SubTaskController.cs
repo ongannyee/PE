@@ -129,7 +129,7 @@ namespace TaskManagement.API.Controllers
                     AttachmentId = a.AttachmentId,
                     FileName = a.FileName,
                     FileUrl = a.FileUrl,
-                    //UploadedAt = a.UploadedAt
+                    UploadedAt = a.UploadedAt
                 })
                 .ToList();
 

@@ -60,7 +60,14 @@ namespace TaskManagement.API.Data
                 entity.HasIndex(c => c.CommentId).IsUnique();
             });
 
-            // --- 6. MANY-TO-MANY BRIDGE CONFIGURATIONS (Composite Keys) ---
+            // --- 6. CONFIGURATION FOR ATTACHMENT ---
+            modelBuilder.Entity<Attachment>(entity =>
+            {
+                entity.Property(a => a.AttachmentId).ValueGeneratedOnAdd();
+                entity.HasIndex(a => a.AttachmentId).IsUnique();
+            });
+
+            // --- 7. MANY-TO-MANY BRIDGE CONFIGURATIONS (Composite Keys) ---
 
             // Project <-> User
             modelBuilder.Entity<ProjectMember>()
