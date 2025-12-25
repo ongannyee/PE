@@ -12,8 +12,8 @@ using TaskManagement.API.Data;
 namespace TaskManagement.API.Migrations
 {
     [DbContext(typeof(ProjectDBContext))]
-    [Migration("20251225160937_InitialFullSchema")]
-    partial class InitialFullSchema
+    [Migration("20251225161359_TotalDatabaseReset")]
+    partial class TotalDatabaseReset
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
