@@ -1,12 +1,19 @@
 using Microsoft.EntityFrameworkCore;
 using TaskManagement.API.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddNewtonsoftJson(options =>
+    {
+        // This prevents the "Infinite Loop" crash when returning related data
+        options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+    });
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
 builder.Services.AddDbContext<ProjectDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ProjectConnection"))
 ); //ZongHan Database ConnectionString
