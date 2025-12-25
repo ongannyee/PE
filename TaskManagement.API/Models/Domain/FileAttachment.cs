@@ -6,6 +6,7 @@ namespace TaskManagement.API.Models.Domain
     {
         [Key]
         public Guid Id { get; set; }
+        public int AttachmentId { get; set; }
         public string FileName { get; set; } = string.Empty;
         public string FileUrl { get; set; } = string.Empty;
 
