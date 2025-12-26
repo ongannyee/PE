@@ -117,6 +117,32 @@ namespace TaskManagement.API.Controllers
             return Ok(new { Message = "User removed from task successfully" });
         }
 
+        // GET: api/Task/user/{userId} personal user tab
+        [HttpGet("user/{userId}")]
+        public async Task<IActionResult> GetMyAssignedTasks(Guid userId)
+        {
+            // 1. Query the bridge table for this specific user
+            var assignedTasks = await _context.TaskAssignments
+                .Where(ta => ta.UserId == userId)
+                .Include(ta => ta.TaskItem) // Load the Task details
+                .Select(ta => ta.TaskItem)  // Flatten to just the Task objects
+                .ToListAsync();
+
+            // 2. Convert to DTO (Matches the format of your GetAllTasks method)
+            var tasksDTO = assignedTasks.Select(t => new TaskItemDTO 
+            { 
+                TaskId = t.TaskId, 
+                Title = t.Title, 
+                Description = t.Description, 
+                Status = t.Status.ToString(), 
+                Priority = t.Priority.ToString(), 
+                DueDate = t.DueDate, 
+                ProjectId = t.ProjectId 
+            }).ToList();
+
+            return Ok(tasksDTO);
+        }
+
         // 1. GET all Subtasks for a specific Task
         [HttpGet("{taskId:guid}/subtasks")]
         public IActionResult GetSubTasksByTask(Guid taskId)

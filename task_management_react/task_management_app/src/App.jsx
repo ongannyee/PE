@@ -4,6 +4,7 @@ import Sidebar from "./components/Sidebar";
 import ProjectPage from "./components/ProjectPage";
 import AddProjectPage from "./components/AddProjectPage";
 import ProjectTimelinePage from "./components/ProjectTimeLine";
+import UserTasks from './components/UserTasks';
 
 function App() {
   const [activePage, setActivePage] = useState("projects"); // default page
@@ -45,6 +46,8 @@ function App() {
         return <AddProjectPage />;
       case "project-timeline":
         return <ProjectTimelinePage />;
+      case "my-tasks":
+         return <UserTasks />;
       default:
         return (
           <ProjectPage
