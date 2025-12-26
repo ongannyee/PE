@@ -39,7 +39,16 @@ const AnimatedTableRow = ({ children, delay = 0, index, onMouseEnter, onClick, i
   );
 };
 
-function AnimatedProjectTableItem({ project, onDelete, onClick, onArchiveOrRestore, index, selectedIndex, onItemMouseEnter }) {
+function AnimatedProjectTableItem({ 
+  project, 
+  onDelete, 
+  onClick, 
+  onEdit, // <--- 1. Accept the Edit function
+  onArchiveOrRestore, 
+  index, 
+  selectedIndex, 
+  onItemMouseEnter 
+}) {
   const isArchived = Boolean(project.isArchived);
   const isSelected = selectedIndex === index;
   
@@ -70,13 +79,30 @@ function AnimatedProjectTableItem({ project, onDelete, onClick, onArchiveOrResto
       <td className="py-3 px-4 overflow-hidden text-ellipsis whitespace-nowrap" style={{ width: "80px" }}>
         {project.projectId}
       </td>
+      
+      {/* 2. Modified Project Name Column to include Edit Button */}
       <td
-        className="py-3 px-4 cursor-pointer text-blue-600 overflow-hidden text-ellipsis whitespace-nowrap font-medium"
-        title={project.projectName}
+        className="py-3 px-4 font-medium"
         style={{ width: "25%" }}
       >
-        {project.projectName}
+        <div className="flex justify-between items-center group">
+          <span className="text-blue-600 truncate mr-2" title={project.projectName}>
+            {project.projectName}
+          </span>
+          
+          {/* THE EDIT BUTTON */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation(); // Stop row click
+              onEdit(project);     // Trigger Edit Modal
+            }}
+            className="text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 rounded hover:bg-blue-50 text-xs border border-transparent hover:border-blue-200"
+          >
+            Edit
+          </button>
+        </div>
       </td>
+
       <td className="py-3 px-4 overflow-hidden text-ellipsis whitespace-nowrap text-gray-700" style={{ width: "140px" }}>
         {formatDate(project.startDate)}
       </td>
@@ -127,4 +153,3 @@ function AnimatedProjectTableItem({ project, onDelete, onClick, onArchiveOrResto
 }
 
 export default AnimatedProjectTableItem;
-

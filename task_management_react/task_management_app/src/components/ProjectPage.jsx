@@ -4,7 +4,7 @@ import ProjectSearchBar from "../components/ProjectSearchBar";
 import ProjectTable from "../components/ProjectTable";
 import UpdateProjectModal from "../components/UpdateProjectModal";
 
-function ProjectPage() {
+function ProjectPage({onClick}) {
   const [search, setSearch] = useState("");
   const [projects, setProjects] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -98,7 +98,7 @@ function ProjectPage() {
   };
 
   // Open project modal
-  const handleProjectClick = (project) => setSelectedProject(project);
+  const handleEditClick = (project) => setSelectedProject(project);
 
   // Update project
   const handleProjectUpdate = async (projectId, updatedProject) => {
@@ -129,7 +129,8 @@ function ProjectPage() {
       <ProjectTable
         projects={filtered}
         onDelete={handleDeleteProject}
-        onClick={handleProjectClick}
+        onClick={onClick}
+        onEdit={handleEditClick}
         onArchiveOrRestore={handleArchiveOrRestore}
       />
 

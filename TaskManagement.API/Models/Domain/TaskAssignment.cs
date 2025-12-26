@@ -6,6 +6,7 @@ namespace TaskManagement.API.Models.Domain
         public User User { get; set; } = null!;
 
         public Guid TaskId { get; set; }
+        public Guid TaskItemId { get; set; }
         public TaskItem TaskItem { get; set; } = null!;
     }
 }

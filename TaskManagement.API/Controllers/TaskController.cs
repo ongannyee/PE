@@ -98,7 +98,8 @@ namespace TaskManagement.API.Controllers
         [HttpPost("AssignUser")]
         public IActionResult AssignUser([FromBody] TaskAssignmentDTO dto)
         {
-            var assignment = new TaskAssignment { UserId = dto.UserId, TaskId = dto.TaskId };
+            var assignment = new TaskAssignment 
+            { UserId = dto.UserId,TaskId = dto.TaskId, TaskItemId = dto.TaskId };
             _context.TaskAssignments.Add(assignment);
             _context.SaveChanges();
             return Ok(new { Message = "User assigned to task successfully" });

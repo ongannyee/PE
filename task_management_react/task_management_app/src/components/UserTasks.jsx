@@ -1,55 +1,106 @@
 import React, { useState, useEffect } from 'react';
 
-const UserTasks = () => {
-  // 1. State to store our data
+// 1. We accept 'currentUserId' from App.jsx
+const UserTasks = ({ currentUserId }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // REPLACE THIS with the ID you copied from the browser
-  const userId = "3bb18e2d-f11d-4a91-a259-6298988520fc"; 
+  // (The hardcoded const userId = "..." is GONE)
 
-  // 2. The Fetch Logic
   useEffect(() => {
     const fetchTasks = async () => {
+      // Safety check: Don't fetch if we don't have an ID yet
+      if (!currentUserId) return;
+
       try {
-        const response = await fetch(`http://localhost:5017/api/user/${userId}/tasks`);
+        setLoading(true);
+        // 2. We use the prop variable here
+        const response = await fetch(`http://localhost:5017/api/user/${currentUserId}/tasks`);
         
         if (!response.ok) {
-          throw new Error('Failed to fetch tasks');
+           if(response.status === 404) {
+             setTasks([]); 
+             return;
+           }
+           throw new Error('Failed to fetch tasks');
         }
 
         const data = await response.json();
-        setTasks(data); // Save data to state
-        setLoading(false);
+        setTasks(data);
       } catch (err) {
         setError(err.message);
+      } finally {
         setLoading(false);
       }
     };
 
     fetchTasks();
-  }, []); // Empty array means "run once when page loads"
+  }, [currentUserId]); // 3. Re-run this if currentUserId changes
 
-  // 3. Render logic (What shows up on screen)
-  if (loading) return <div>Loading tasks...</div>;
-  if (error) return <div style={{color: 'red'}}>Error: {error}</div>;
+  // Helper to color-code statuses
+  const getStatusColor = (status) => {
+    const s = status?.toLowerCase() || "";
+    if (s === 'completed' || s === 'done') return 'bg-green-100 text-green-800 border-green-200';
+    if (s === 'inprogress' || s === 'in progress') return 'bg-blue-100 text-blue-800 border-blue-200';
+    return 'bg-gray-100 text-gray-800 border-gray-200'; 
+  };
+
+  if (loading) return <div className="p-8 text-center text-gray-500">Loading your dashboard...</div>;
+  if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-      <h2>My Tasks</h2>
+    <div className="p-8 max-w-6xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">My Work</h1>
+        <p className="text-gray-500 mt-1">Here is everything assigned to you across all projects.</p>
+      </div>
+
       {tasks.length === 0 ? (
-        <p>No tasks found for this user.</p>
+        <div className="text-center py-16 bg-white rounded-lg border-2 border-dashed border-gray-200">
+          <h3 className="mt-2 text-sm font-medium text-gray-900">All caught up!</h3>
+          <p className="mt-1 text-sm text-gray-500">You have no active tasks assigned to you.</p>
+        </div>
       ) : (
-        <ul>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {tasks.map((task) => (
-            <li key={task.taskId} style={{ marginBottom: '10px' }}>
-              <strong>{task.title}</strong> - {task.status}
-              <br/>
-              <small>{task.description}</small>
-            </li>
+            <div 
+              key={task.taskId} 
+              className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-100 overflow-hidden flex flex-col"
+            >
+              <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between items-center">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Project #{task.projectId}
+                </span>
+                {task.dueDate && (
+                  <span className="text-xs text-red-500 font-medium">
+                    Due: {new Date(task.dueDate).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+
+              <div className="p-5 flex-1">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-bold text-lg text-gray-800 leading-tight">
+                    {task.title}
+                  </h3>
+                </div>
+                <p className="text-gray-600 text-sm line-clamp-3">
+                  {task.description || "No description provided."}
+                </p>
+              </div>
+
+              <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between bg-white">
+                <span className={`px-2 py-1 rounded text-xs font-semibold border ${getStatusColor(task.status)}`}>
+                  {task.status}
+                </span>
+                <span className="text-xs font-medium text-gray-500">
+                  Priority: {task.priority}
+                </span>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

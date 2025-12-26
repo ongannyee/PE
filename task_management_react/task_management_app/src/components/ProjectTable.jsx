@@ -1,8 +1,9 @@
-// ProjectTable.jsx
+// src/components/ProjectTable.jsx
 import { useState, useCallback, useRef, useEffect } from "react";
 import AnimatedProjectTableItem from "./AnimatedProjectTableItem";
 
-function ProjectTable({ projects = [], onDelete, onClick, onArchiveOrRestore }) {
+// 1. Accept 'onEdit' here
+function ProjectTable({ projects = [], onDelete, onClick, onEdit, onArchiveOrRestore }) {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [keyboardNav, setKeyboardNav] = useState(false);
   const tableRef = useRef(null);
@@ -113,6 +114,9 @@ function ProjectTable({ projects = [], onDelete, onClick, onArchiveOrRestore }) 
                 onDelete={onDelete}
                 onArchiveOrRestore={onArchiveOrRestore}
                 onClick={(project) => handleItemClick(project, index)}
+                
+                // 2. Pass it down to the child component
+                onEdit={onEdit} 
               />
             ))
           )}
