@@ -8,14 +8,18 @@ import {
 } from '../API/TaskItemAPI';
 
 const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
-  // CRITICAL: We need the GUID 'id' for assignments.
-  // We check 'id' first as that is the standard GUID name from the DTO.
+  // --- GUID SELECTION LOGIC ---
+  // We check for 'id', then 'taskIdGuid' (common in C# DTOs)
+  // If you see '0000...', it means 'task.id' exists but is empty.
   const taskGuid = task?.id || task?.taskIdGuid;
+
+  // Debugging: This will show you exactly what GUID the modal received
+  console.log("Task received in Modal:", task);
+  console.log("Extracted taskGuid:", taskGuid);
 
   const [formData, setFormData] = useState({
     title: task.title || '',
     description: task.description || '',
-    // Convert string status/priority back to numbers for the dropdowns
     status: task.status === 'InProgress' ? 1 : task.status === 'Done' ? 2 : 0,
     priority: task.priority === 'Medium' ? 1 : task.priority === 'High' ? 2 : task.priority === 'Urgent' ? 3 : 0,
     dueDate: task.dueDate ? task.dueDate.split('T')[0] : ''
@@ -31,8 +35,9 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
   // Load All Users and Current Task Members
   useEffect(() => {
     const loadData = async () => {
-      if (!taskGuid) {
-        console.error("UpdateTaskModal: Missing Task GUID", task);
+      // Logic check for "all zeros" or undefined
+      if (!taskGuid || taskGuid === '00000000-0000-0000-0000-000000000000') {
+        console.error("UpdateTaskModal: Invalid or Empty GUID detected!");
         return;
       }
 
@@ -56,15 +61,20 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
     };
 
     loadData();
-  }, [taskGuid]); // Re-run if the task identity changes
+  }, [taskGuid]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!taskGuid) return alert("Task GUID missing.");
+    
+    // Safety check before calling API
+    if (!taskGuid || taskGuid === '00000000-0000-0000-0000-000000000000') {
+        alert("Cannot save: Task GUID is invalid (all zeros).");
+        return;
+    }
     
     setIsSubmitting(true);
     try {
-      // 1. Update the Text Fields (Uses integer taskId)
+      // 1. Update the Text Fields (Uses integer taskId for route)
       await updateTask(task.taskId, {
         ...task,
         title: formData.title,
@@ -74,7 +84,7 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
         dueDate: formData.dueDate || null
       });
 
-      // 2. Sync Members (Uses GUID taskGuid)
+      // 2. Sync Members
       const currentMembersRaw = await fetchTaskMembers(taskGuid);
       const currentIds = currentMembersRaw.map(m => (m.id || m.userId || '').toLowerCase());
       const targetIds = selectedUsers.map(u => u.id.toLowerCase());
@@ -82,7 +92,7 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
       const toAdd = selectedUsers.filter(u => !currentIds.includes(u.id));
       const toRemove = currentMembersRaw.filter(m => !targetIds.includes(m.id));
 
-      // Execute assignments sequentially to ensure DB consistency
+      // Use the verified taskGuid for assignments
       for (const user of toAdd) {
         await assignUserToTask({ taskId: taskGuid, userId: user.id });
       }
@@ -95,7 +105,7 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
       onClose();
     } catch (err) {
       console.error("Update Error:", err);
-      alert("Failed to update task.");
+      alert("Failed to update task. Check console for details.");
     } finally {
       setIsSubmitting(false);
     }
@@ -121,7 +131,10 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4 border-b pb-2 text-gray-800">Edit Task</h2>
+        <div className="flex justify-between items-center mb-4 border-b pb-2">
+            <h2 className="text-xl font-bold text-gray-800">Edit Task</h2>
+            <span className="text-xs text-gray-400 font-mono">ID: {task.taskId}</span>
+        </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
