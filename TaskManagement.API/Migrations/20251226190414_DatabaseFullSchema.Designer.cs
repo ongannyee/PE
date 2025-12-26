@@ -12,8 +12,8 @@ using TaskManagement.API.Data;
 namespace TaskManagement.API.Migrations
 {
     [DbContext(typeof(ProjectDBContext))]
-    [Migration("20251225161359_TotalDatabaseReset")]
-    partial class TotalDatabaseReset
+    [Migration("20251226190414_DatabaseFullSchema")]
+    partial class DatabaseFullSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -31,6 +31,12 @@ namespace TaskManagement.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("AttachmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AttachmentId"));
+
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -39,12 +45,26 @@ namespace TaskManagement.API.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("SubTaskId")
+                    b.Property<Guid?>("SubTaskId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TaskItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AttachmentId")
+                        .IsUnique();
+
                     b.HasIndex("SubTaskId");
+
+                    b.HasIndex("TaskItemId");
 
                     b.ToTable("Attachments");
                 });
@@ -63,6 +83,9 @@ namespace TaskManagement.API.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TaskItemId")
                         .HasColumnType("uniqueidentifier");
@@ -154,6 +177,9 @@ namespace TaskManagement.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SubTaskId"));
 
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("TaskItemId")
                         .HasColumnType("uniqueidentifier");
 
@@ -194,12 +220,9 @@ namespace TaskManagement.API.Migrations
                     b.Property<Guid>("TaskId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("TaskItemId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("UserId", "TaskId");
 
-                    b.HasIndex("TaskItemId");
+                    b.HasIndex("TaskId");
 
                     b.ToTable("TaskAssignments");
                 });
@@ -290,11 +313,15 @@ namespace TaskManagement.API.Migrations
                 {
                     b.HasOne("TaskManagement.API.Models.Domain.SubTask", "SubTask")
                         .WithMany("Attachments")
-                        .HasForeignKey("SubTaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("SubTaskId");
+
+                    b.HasOne("TaskManagement.API.Models.Domain.TaskItem", "TaskItem")
+                        .WithMany()
+                        .HasForeignKey("TaskItemId");
 
                     b.Navigation("SubTask");
+
+                    b.Navigation("TaskItem");
                 });
 
             modelBuilder.Entity("TaskManagement.API.Models.Domain.Comment", b =>
@@ -369,7 +396,7 @@ namespace TaskManagement.API.Migrations
                 {
                     b.HasOne("TaskManagement.API.Models.Domain.TaskItem", "TaskItem")
                         .WithMany("TaskAssignments")
-                        .HasForeignKey("TaskItemId")
+                        .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

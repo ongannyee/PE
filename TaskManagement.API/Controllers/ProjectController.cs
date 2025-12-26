@@ -180,12 +180,13 @@ namespace TaskManagement.API.Controllers
 
         // 4. Get all Tasks belonging to a Project
         [HttpGet("{projectId:guid}/tasks")]
-        public IActionResult GetProjectTasks(Guid projectId)
+        public async Task<IActionResult> GetProjectTasks(Guid projectId)
         {
             var tasks = _context.Tasks
                 .Where(t => t.ProjectId == projectId)
                 .Select(t => new TaskItemDTO
                 {
+                    Id = t.Id,
                     TaskId = t.TaskId,
                     Title = t.Title,
                     Description = t.Description,

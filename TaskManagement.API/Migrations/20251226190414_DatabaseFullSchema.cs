@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TaskManagement.API.Migrations
 {
     /// <inheritdoc />
-    public partial class TotalDatabaseReset : Migration
+    public partial class DatabaseFullSchema : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -105,6 +105,7 @@ namespace TaskManagement.API.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Text = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    TaskId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     TaskItemId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
@@ -134,6 +135,7 @@ namespace TaskManagement.API.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsCompleted = table.Column<bool>(type: "bit", nullable: false),
+                    TaskId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     TaskItemId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
@@ -152,15 +154,14 @@ namespace TaskManagement.API.Migrations
                 columns: table => new
                 {
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    TaskId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    TaskItemId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    TaskId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_TaskAssignments", x => new { x.UserId, x.TaskId });
                     table.ForeignKey(
-                        name: "FK_TaskAssignments_Tasks_TaskItemId",
-                        column: x => x.TaskItemId,
+                        name: "FK_TaskAssignments_Tasks_TaskId",
+                        column: x => x.TaskId,
                         principalTable: "Tasks",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -177,9 +178,14 @@ namespace TaskManagement.API.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    AttachmentId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     FileName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     FileUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SubTaskId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    UploadedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    TaskId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    TaskItemId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    SubTaskId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -188,8 +194,12 @@ namespace TaskManagement.API.Migrations
                         name: "FK_Attachments_SubTasks_SubTaskId",
                         column: x => x.SubTaskId,
                         principalTable: "SubTasks",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Attachments_Tasks_TaskItemId",
+                        column: x => x.TaskItemId,
+                        principalTable: "Tasks",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -217,9 +227,20 @@ namespace TaskManagement.API.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Attachments_AttachmentId",
+                table: "Attachments",
+                column: "AttachmentId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Attachments_SubTaskId",
                 table: "Attachments",
                 column: "SubTaskId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Attachments_TaskItemId",
+                table: "Attachments",
+                column: "TaskItemId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Comments_CommentId",
@@ -265,9 +286,9 @@ namespace TaskManagement.API.Migrations
                 column: "TaskItemId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TaskAssignments_TaskItemId",
+                name: "IX_TaskAssignments_TaskId",
                 table: "TaskAssignments",
-                column: "TaskItemId");
+                column: "TaskId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Tasks_ProjectId",
