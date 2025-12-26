@@ -158,6 +158,7 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
             <option value={0}>Low</option>
             <option value={1}>Medium</option>
             <option value={2}>High</option>
+            <option value={3}>Urgent</option>
           </select>
         </div>
         <div>

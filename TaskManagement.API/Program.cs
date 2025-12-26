@@ -1,22 +1,22 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using TaskManagement.API.Data;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers()
     .AddNewtonsoftJson(options =>
     {
-        // This prevents the "Infinite Loop" crash when returning related data
         options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
     });
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<ProjectDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ProjectConnection"))
-); //ZongHan Database ConnectionString
+);
 
 builder.Services.AddCors(options =>
 {
@@ -26,6 +26,7 @@ builder.Services.AddCors(options =>
                         .AllowAnyHeader()
     );
 });
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -34,7 +35,23 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+// Ensure the Uploads folder exists physically
+var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "Uploads");
+if (!Directory.Exists(uploadsPath))
+{
+    Directory.CreateDirectory(uploadsPath);
+}
+
 app.UseHttpsRedirection();
+
+// --- STATIC FILES CONFIG ---
+// This allows React to access http://localhost:5017/Uploads/filename.jpg
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/Uploads"
+});
+
 app.UseCors("AllowAll");
 app.UseAuthorization();
 

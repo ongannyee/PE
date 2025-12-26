@@ -1,12 +1,17 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TaskManagement.API.Models.Domain
 {
     public class SubTask
     {
         [Key]
-        public Guid Id { get; set; }
-        public int SubTaskId {get; set;}
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        // DatabaseGenerated tells EF Core to let the SQL Server handle the increment (1, 2, 3...)
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int SubTaskId { get; set; }
+
         public string Title { get; set; } = string.Empty;
         public bool IsCompleted { get; set; }
 
@@ -14,10 +19,7 @@ namespace TaskManagement.API.Models.Domain
         public Guid TaskId { get; set; } 
         public TaskItem TaskItem { get; set; } = null!;
 
-        // Support for File Attachments (Usually stored as URLs or Paths)
         public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
-        // Bridge for User Assignments
         public ICollection<SubTaskAssignment> SubTaskAssignments { get; set; } = new List<SubTaskAssignment>();
     }
 }
-

@@ -13,27 +13,30 @@ namespace TaskManagement.API.Controllers
     {
         private readonly ProjectDBContext _context = dBContext;
 
-        // ==========================================
-        // STANDARD CRUD OPERATIONS
-        // ==========================================
-
+        // 1. GET: All subtasks with their attachments included
         [HttpGet]
         public IActionResult GetAllSubTasks()
         {
-            var subtasks = _context.SubTasks.ToList();
+            var subtasks = _context.SubTasks
+                .Include(s => s.Attachments) // Ensures attachments are returned in the JSON
+                .ToList();
             return Ok(subtasks);
         }
 
-        [HttpGet("{subTaskId:int}")]
-        public IActionResult GetSubTaskById(int subTaskId)
+        // 2. GET: Single subtask by Id with its attachments
+        [HttpGet("{id:guid}")]
+        public IActionResult GetSubTaskById(Guid id)
         {
-            var subTask = _context.SubTasks.FirstOrDefault(s => s.SubTaskId == subTaskId);
+            var subTask = _context.SubTasks
+                .Include(s => s.Attachments)
+                .FirstOrDefault(s => s.Id == id);
+
             if (subTask == null) return NotFound();
             return Ok(subTask);
         }
 
         [HttpPost]
-        public IActionResult CreateSubTask([FromBody] SubTaskDTO dto, [FromQuery] Guid taskId)
+        public IActionResult CreateSubTask([FromBody] CreateSubTaskRequestDTO dto, [FromQuery] Guid taskId)
         {
             var subTask = new SubTask 
             { 
@@ -47,10 +50,10 @@ namespace TaskManagement.API.Controllers
             return Ok(subTask);
         }
 
-        [HttpPut("{subTaskId:int}")]
-        public IActionResult UpdateSubTask(int subTaskId, [FromBody] UpdateSubTaskRequestDTO updateDto)
+        [HttpPut("{id:guid}")]
+        public IActionResult UpdateSubTask(Guid id, [FromBody] UpdateSubTaskRequestDTO updateDto)
         {
-            var subTask = _context.SubTasks.FirstOrDefault(s => s.SubTaskId == subTaskId);
+            var subTask = _context.SubTasks.FirstOrDefault(s => s.Id == id);
             if (subTask == null) return NotFound();
 
             subTask.Title = updateDto.Title;
@@ -60,10 +63,10 @@ namespace TaskManagement.API.Controllers
             return Ok(subTask);
         }
 
-        [HttpDelete("{subTaskId:int}")]
-        public IActionResult DeleteSubTask(int subTaskId)
+        [HttpDelete("{id:guid}")]
+        public IActionResult DeleteSubTask(Guid id)
         {
-            var subTask = _context.SubTasks.FirstOrDefault(s => s.SubTaskId == subTaskId);
+            var subTask = _context.SubTasks.FirstOrDefault(s => s.Id == id);
             if (subTask == null) return NotFound();
 
             _context.SubTasks.Remove(subTask);
@@ -75,7 +78,6 @@ namespace TaskManagement.API.Controllers
         // ASSOCIATION & RELATIONSHIP METHODS
         // ==========================================
 
-        // 1. Assign User to SubTask
         [HttpPost("AssignUser")]
         public IActionResult AssignUserToSubTask([FromBody] SubTaskAssignmentDTO dto)
         {
@@ -85,7 +87,6 @@ namespace TaskManagement.API.Controllers
             return Ok(new { Message = "User assigned to subtask successfully" });
         }
 
-        // 2. Remove User from SubTask
         [HttpDelete("RemoveUser")]
         public IActionResult RemoveUserFromSubTask([FromBody] SubTaskAssignmentDTO dto)
         {
@@ -99,7 +100,6 @@ namespace TaskManagement.API.Controllers
             return Ok(new { Message = "User removed from subtask successfully" });
         }
 
-        // 3. Get all Members (Users) assigned to this SubTask
         [HttpGet("{subTaskId:guid}/members")]
         public IActionResult GetSubTaskMembers(Guid subTaskId)
         {
@@ -118,7 +118,6 @@ namespace TaskManagement.API.Controllers
             return Ok(members);
         }
 
-        // 4. Get all Attachments (Files/Links) for this SubTask
         [HttpGet("{subTaskId:guid}/attachments")]
         public IActionResult GetSubTaskAttachments(Guid subTaskId)
         {

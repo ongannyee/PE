@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskManagement.API.Data;
 
@@ -11,9 +12,11 @@ using TaskManagement.API.Data;
 namespace TaskManagement.API.Migrations
 {
     [DbContext(typeof(ProjectDBContext))]
-    partial class ProjectDBContextModelSnapshot : ModelSnapshot
+    [Migration("20251226200641_SubTaskRevised")]
+    partial class SubTaskRevised
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -48,6 +51,9 @@ namespace TaskManagement.API.Migrations
                     b.Property<Guid?>("TaskId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("TaskItemId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("datetime2");
 
@@ -58,7 +64,7 @@ namespace TaskManagement.API.Migrations
 
                     b.HasIndex("SubTaskId");
 
-                    b.HasIndex("TaskId");
+                    b.HasIndex("TaskItemId");
 
                     b.ToTable("Attachments");
                 });
@@ -304,13 +310,11 @@ namespace TaskManagement.API.Migrations
                 {
                     b.HasOne("TaskManagement.API.Models.Domain.SubTask", "SubTask")
                         .WithMany("Attachments")
-                        .HasForeignKey("SubTaskId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .HasForeignKey("SubTaskId");
 
                     b.HasOne("TaskManagement.API.Models.Domain.TaskItem", "TaskItem")
-                        .WithMany("TaskAttachments")
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .WithMany()
+                        .HasForeignKey("TaskItemId");
 
                     b.Navigation("SubTask");
 
@@ -436,8 +440,6 @@ namespace TaskManagement.API.Migrations
                     b.Navigation("SubTasks");
 
                     b.Navigation("TaskAssignments");
-
-                    b.Navigation("TaskAttachments");
                 });
 
             modelBuilder.Entity("TaskManagement.API.Models.Domain.User", b =>

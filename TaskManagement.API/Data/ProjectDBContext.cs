@@ -25,8 +25,8 @@ namespace TaskManagement.API.Data
             // --- 1. CONFIGURATION FOR PROJECT ---
             modelBuilder.Entity<Project>(entity =>
             {
+                entity.HasKey(p => p.Id); 
                 entity.Property(p => p.ProjectName).HasMaxLength(150);
-                // Auto-increment and Unique for ProjectId (int)
                 entity.Property(p => p.ProjectId).ValueGeneratedOnAdd();
                 entity.HasIndex(p => p.ProjectId).IsUnique();
             });
@@ -34,14 +34,16 @@ namespace TaskManagement.API.Data
             // --- 2. CONFIGURATION FOR USER ---
             modelBuilder.Entity<User>(entity =>
             {
+                entity.HasKey(u => u.Id); 
                 entity.Property(u => u.UserId).ValueGeneratedOnAdd();
                 entity.HasIndex(u => u.UserId).IsUnique();
-                entity.HasIndex(u => u.Email).IsUnique(); // Emails should also be unique
+                entity.HasIndex(u => u.Email).IsUnique();
             });
 
             // --- 3. CONFIGURATION FOR TASKITEM ---
             modelBuilder.Entity<TaskItem>(entity =>
             {
+                entity.HasKey(t => t.Id); 
                 entity.Property(t => t.TaskId).ValueGeneratedOnAdd();
                 entity.HasIndex(t => t.TaskId).IsUnique();
             });
@@ -49,25 +51,45 @@ namespace TaskManagement.API.Data
             // --- 4. CONFIGURATION FOR SUBTASK ---
             modelBuilder.Entity<SubTask>(entity =>
             {
-                entity.Property(s => s.SubTaskId).ValueGeneratedOnAdd();
+                entity.HasKey(s => s.Id); 
+                entity.Property(s => s.SubTaskId).ValueGeneratedOnAdd(); 
                 entity.HasIndex(s => s.SubTaskId).IsUnique();
+
+                entity.HasOne(s => s.TaskItem)
+                      .WithMany(t => t.SubTasks)
+                      .HasForeignKey(s => s.TaskId)
+                      .OnDelete(DeleteBehavior.Cascade); 
             });
 
             // --- 5. CONFIGURATION FOR COMMENT ---
             modelBuilder.Entity<Comment>(entity =>
             {
+                entity.HasKey(c => c.Id);
                 entity.Property(c => c.CommentId).ValueGeneratedOnAdd();
                 entity.HasIndex(c => c.CommentId).IsUnique();
             });
 
-            // --- 6. CONFIGURATION FOR ATTACHMENT ---
+            // --- 6. CONFIGURATION FOR ATTACHMENT (Updated) ---
             modelBuilder.Entity<Attachment>(entity =>
             {
+                entity.HasKey(a => a.Id);
                 entity.Property(a => a.AttachmentId).ValueGeneratedOnAdd();
                 entity.HasIndex(a => a.AttachmentId).IsUnique();
+
+                // Relationship: Attachment -> TaskItem
+                entity.HasOne(a => a.TaskItem)
+                      .WithMany(t => t.TaskAttachments)
+                      .HasForeignKey(a => a.TaskId)
+                      .OnDelete(DeleteBehavior.NoAction); // Use NoAction to avoid multiple cascade paths
+
+                // Relationship: Attachment -> SubTask
+                entity.HasOne(a => a.SubTask)
+                      .WithMany(s => s.Attachments)
+                      .HasForeignKey(a => a.SubTaskId)
+                      .OnDelete(DeleteBehavior.Cascade); // If Subtask is deleted, delete its attachments
             });
 
-            // --- 7. MANY-TO-MANY BRIDGE CONFIGURATIONS (Composite Keys) ---
+            // --- 7. MANY-TO-MANY BRIDGE CONFIGURATIONS ---
 
             // Project <-> User
             modelBuilder.Entity<ProjectMember>()
@@ -77,22 +99,30 @@ namespace TaskManagement.API.Data
             modelBuilder.Entity<TaskAssignment>()
                 .HasKey(ta => new { ta.UserId, ta.TaskId });
 
-            // 2. Configure the Relationship to User
             modelBuilder.Entity<TaskAssignment>()
                 .HasOne(ta => ta.User)
                 .WithMany(u => u.TaskAssignments)
                 .HasForeignKey(ta => ta.UserId);
 
-            // 3. Configure the Relationship to TaskItem (The Fix)
             modelBuilder.Entity<TaskAssignment>()
                 .HasOne(ta => ta.TaskItem)
                 .WithMany(t => t.TaskAssignments)
-                .HasForeignKey(ta => ta.TaskId)
-                .HasPrincipalKey(t => t.Id);
+                .HasForeignKey(ta => ta.TaskId);
 
-            // SubTask <-> User
-            modelBuilder.Entity<SubTaskAssignment>()
-                .HasKey(sta => new { sta.UserId, sta.SubTaskId });
+            // SubTask <-> User 
+            modelBuilder.Entity<SubTaskAssignment>(entity =>
+            {
+                entity.HasKey(sta => new { sta.UserId, sta.SubTaskId });
+
+                entity.HasOne(sta => sta.SubTask)
+                    .WithMany(s => s.SubTaskAssignments)
+                    .HasForeignKey(sta => sta.SubTaskId)
+                    .HasPrincipalKey(s => s.Id); 
+
+                entity.HasOne(sta => sta.User)
+                    .WithMany(u => u.SubTaskAssignments)
+                    .HasForeignKey(sta => sta.UserId);
+            });
         }
     }
 }

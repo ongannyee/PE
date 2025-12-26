@@ -42,6 +42,7 @@ namespace TaskManagement.API.Models.Domain
 
         // Bridge to assigned Users
         public ICollection<TaskAssignment> TaskAssignments { get; set; } = new List<TaskAssignment>();
+        public ICollection<Attachment> TaskAttachments { get; set; } = new List<Attachment>();
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     }
 }

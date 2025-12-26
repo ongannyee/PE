@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using TaskManagement.API.Data;
 using TaskManagement.API.Models.Domain;
-using TaskManagement.API.Models.DTOs;
 using System.IO;
+using Microsoft.EntityFrameworkCore;
 
 namespace TaskManagement.API.Controllers
 {
@@ -13,7 +13,6 @@ namespace TaskManagement.API.Controllers
         private readonly ProjectDBContext _context = dBContext;
         private readonly IWebHostEnvironment _environment = environment;
 
-        // 1. GET: List all attachments (For Admin/Audit)
         [HttpGet]
         public IActionResult GetAllAttachments()
         {
@@ -21,47 +20,59 @@ namespace TaskManagement.API.Controllers
             return Ok(attachments);
         }
 
-        // 2. POST: Upload File for a Task
         [HttpPost("upload/task/{taskId:guid}")]
         public async Task<IActionResult> UploadToTask(IFormFile file, [FromRoute] Guid taskId)
         {
             return await ProcessFileUpload(file, taskId, null);
         }
 
-        // 3. POST: Upload File for a SubTask
         [HttpPost("upload/subtask/{subTaskId:guid}")]
         public async Task<IActionResult> UploadToSubTask(IFormFile file, [FromRoute] Guid subTaskId)
         {
             return await ProcessFileUpload(file, null, subTaskId);
         }
 
-        // 4. DELETE: Remove Attachment and delete physical file
-        [HttpDelete("{attachmentId:int}")]
-        public IActionResult DeleteAttachment(int attachmentId)
+        // UPDATED: Now uses Guid Id for consistency with other Controllers
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> DeleteAttachment(Guid id)
         {
-            var attachment = _context.Attachments.FirstOrDefault(a => a.AttachmentId == attachmentId);
-            if (attachment == null) return NotFound();
-
-            // Delete physical file from folder
-            if (System.IO.File.Exists(attachment.FileUrl))
+            // Find by the Guid Primary Key
+            var attachment = await _context.Attachments.FirstOrDefaultAsync(a => a.Id == id);
+            
+            if (attachment == null) 
             {
-                System.IO.File.Delete(attachment.FileUrl);
+                return NotFound("Attachment not found in database.");
+            }
+
+            try 
+            {
+                // Convert Web URL back to Physical Path for deletion
+                // FileUrl is "/Uploads/unique-name.jpg"
+                var fileName = Path.GetFileName(attachment.FileUrl);
+                var physicalPath = Path.Combine(_environment.ContentRootPath, "Uploads", fileName);
+
+                if (System.IO.File.Exists(physicalPath))
+                {
+                    System.IO.File.Delete(physicalPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log file system error but continue to remove record from DB if needed
+                Console.WriteLine($"File deletion error: {ex.Message}");
             }
 
             _context.Attachments.Remove(attachment);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             
             return NoContent();
         }
 
-        // --- PRIVATE HELPER METHOD ---
         private async Task<IActionResult> ProcessFileUpload(IFormFile file, Guid? taskId, Guid? subTaskId)
         {
-            // A. Basic Validation
             if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
 
-            // B. Extension Validation (No external library needed)
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf", ".docx", ".xlsx", ".zip" };
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf", ".docx", ".xlsx", ".zip", ".txt" };
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
 
             if (!allowedExtensions.Contains(extension))
@@ -69,29 +80,27 @@ namespace TaskManagement.API.Controllers
                 return BadRequest("File type not allowed.");
             }
 
-            // C. Setup Directory
-            var uploadsPath = Path.Combine(_environment.ContentRootPath, "Uploads");
-            if (!Directory.Exists(uploadsPath))
+            var uploadsFolder = "Uploads";
+            var localPath = Path.Combine(_environment.ContentRootPath, uploadsFolder);
+            
+            if (!Directory.Exists(localPath))
             {
-                Directory.CreateDirectory(uploadsPath);
+                Directory.CreateDirectory(localPath);
             }
 
-            // D. Generate Unique Filename to avoid overwriting
             var uniqueFileName = $"{Guid.NewGuid()}{extension}";
-            var fullPath = Path.Combine(uploadsPath, uniqueFileName);
+            var fullPhysicalPath = Path.Combine(localPath, uniqueFileName);
 
-            // E. Save to Local Folder
-            using (var stream = new FileStream(fullPath, FileMode.Create))
+            using (var stream = new FileStream(fullPhysicalPath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
 
-            // F. Save Record to Database
             var attachment = new Attachment
             {
                 Id = Guid.NewGuid(),
-                FileName = file.FileName, // Original name for the user
-                FileUrl = fullPath,       // Full path for the system to find it
+                FileName = file.FileName, 
+                FileUrl = $"/{uploadsFolder}/{uniqueFileName}", 
                 TaskId = taskId,
                 SubTaskId = subTaskId,
                 UploadedAt = DateTime.UtcNow

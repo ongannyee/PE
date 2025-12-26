@@ -8,18 +8,13 @@ import {
 } from '../API/TaskItemAPI';
 
 const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
-  // --- GUID SELECTION LOGIC ---
-  // We check for 'id', then 'taskIdGuid' (common in C# DTOs)
-  // If you see '0000...', it means 'task.id' exists but is empty.
+  // Use 'id' (Guid) as the primary identifier
   const taskGuid = task?.id || task?.taskIdGuid;
-
-  // Debugging: This will show you exactly what GUID the modal received
-  console.log("Task received in Modal:", task);
-  console.log("Extracted taskGuid:", taskGuid);
 
   const [formData, setFormData] = useState({
     title: task.title || '',
     description: task.description || '',
+    // Logic to map string status to backend integers if necessary
     status: task.status === 'InProgress' ? 1 : task.status === 'Done' ? 2 : 0,
     priority: task.priority === 'Medium' ? 1 : task.priority === 'High' ? 2 : task.priority === 'Urgent' ? 3 : 0,
     dueDate: task.dueDate ? task.dueDate.split('T')[0] : ''
@@ -35,7 +30,6 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
   // Load All Users and Current Task Members
   useEffect(() => {
     const loadData = async () => {
-      // Logic check for "all zeros" or undefined
       if (!taskGuid || taskGuid === '00000000-0000-0000-0000-000000000000') {
         console.error("UpdateTaskModal: Invalid or Empty GUID detected!");
         return;
@@ -66,17 +60,16 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Safety check before calling API
     if (!taskGuid || taskGuid === '00000000-0000-0000-0000-000000000000') {
-        alert("Cannot save: Task GUID is invalid (all zeros).");
+        alert("Cannot save: Task GUID is invalid.");
         return;
     }
     
     setIsSubmitting(true);
     try {
-      // 1. Update the Text Fields (Uses integer taskId for route)
-      await updateTask(task.taskId, {
-        ...task,
+      // 1. Update the Text Fields - Passing the GUID (taskGuid) instead of taskId
+      await updateTask(taskGuid, {
+        id: taskGuid, // Ensure ID is in body if backend requires it
         title: formData.title,
         description: formData.description,
         status: parseInt(formData.status),
@@ -105,7 +98,7 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
       onClose();
     } catch (err) {
       console.error("Update Error:", err);
-      alert("Failed to update task. Check console for details.");
+      alert("Failed to update task. Ensure the backend is expecting a GUID.");
     } finally {
       setIsSubmitting(false);
     }
@@ -129,42 +122,42 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4 border-b pb-2">
-            <h2 className="text-xl font-bold text-gray-800">Edit Task</h2>
-            <span className="text-xs text-gray-400 font-mono">ID: {task.taskId}</span>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4">
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-300">
+        <div className="p-8 pb-0 flex justify-between items-center">
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Edit Task</h2>
+          <button onClick={onClose} className="text-slate-300 hover:text-slate-900 text-4xl font-light">&times;</button>
         </div>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
+
+        <form onSubmit={handleSubmit} className="p-8 space-y-5">
           <div>
-            <label className="block text-sm font-bold text-gray-700">Title</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Task Title</label>
             <input 
               type="text" 
               value={formData.title} 
               onChange={(e) => setFormData({...formData, title: e.target.value})} 
-              className="w-full border rounded-lg p-2 mt-1 focus:ring-2 focus:ring-blue-400 outline-none" 
+              className="w-full mt-2 bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-100 transition-all" 
               required 
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-700">Description</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</label>
             <textarea 
               value={formData.description} 
               onChange={(e) => setFormData({...formData, description: e.target.value})} 
-              className="w-full border rounded-lg p-2 mt-1 focus:ring-2 focus:ring-blue-400 outline-none" 
-              rows="3" 
+              className="w-full mt-2 bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-100 transition-all" 
+              rows="2" 
             />
           </div>
 
           <div className="relative" ref={searchWrapperRef}>
-            <label className="block text-sm font-bold text-gray-700">Assignees</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assignees</label>
             <div className="flex flex-wrap gap-2 my-2">
               {selectedUsers.map(u => (
-                <span key={u.id} className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold flex items-center">
+                <span key={u.id} className="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase flex items-center border border-blue-100">
                   {u.username} 
-                  <button type="button" onClick={() => removeUser(u.id)} className="ml-1 text-blue-400 hover:text-red-500 font-bold">×</button>
+                  <button type="button" onClick={() => removeUser(u.id)} className="ml-2 hover:text-red-500 font-bold">×</button>
                 </span>
               ))}
             </div>
@@ -174,22 +167,23 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
               onFocus={() => setShowSuggestions(true)} 
               onChange={(e) => setSearchTerm(e.target.value)} 
               placeholder="Search users..." 
-              className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none" 
+              className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-100 transition-all" 
             />
             {showSuggestions && searchTerm && (
-              <div className="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto">
+              <div className="absolute z-10 w-full bg-white border border-slate-100 rounded-2xl shadow-xl mt-2 max-h-40 overflow-y-auto overflow-x-hidden">
                 {filteredSuggestions.length > 0 ? (
                   filteredSuggestions.map(u => (
                     <div 
                       key={u.id} 
                       onClick={() => selectUser(u)} 
-                      className="p-2 hover:bg-blue-50 cursor-pointer text-sm border-b last:border-none"
+                      className="p-4 hover:bg-slate-50 cursor-pointer text-sm border-b border-slate-50 last:border-none flex justify-between items-center"
                     >
-                      {u.username} <span className="text-gray-400 text-xs">({u.email})</span>
+                      <span className="font-bold text-slate-700">{u.username}</span>
+                      <span className="text-slate-400 text-xs">{u.email}</span>
                     </div>
                   ))
                 ) : (
-                  <div className="p-2 text-sm text-gray-500">No users found.</div>
+                  <div className="p-4 text-xs text-slate-400">No users found.</div>
                 )}
               </div>
             )}
@@ -197,11 +191,11 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-gray-700">Status</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</label>
               <select 
                 value={formData.status} 
                 onChange={(e) => setFormData({...formData, status: e.target.value})} 
-                className="w-full border rounded-lg p-2 mt-1 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                className="w-full mt-2 bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-100 transition-all"
               >
                 <option value={0}>Todo</option>
                 <option value={1}>In Progress</option>
@@ -209,11 +203,11 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700">Priority</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Priority</label>
               <select 
                 value={formData.priority} 
                 onChange={(e) => setFormData({...formData, priority: e.target.value})} 
-                className="w-full border rounded-lg p-2 mt-1 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                className="w-full mt-2 bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-100 transition-all"
               >
                 <option value={0}>Low</option>
                 <option value={1}>Medium</option>
@@ -224,27 +218,27 @@ const UpdateTaskModal = ({ task, onClose, onTaskUpdated }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-700">Due Date</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Due Date</label>
             <input 
               type="date" 
               value={formData.dueDate} 
               onChange={(e) => setFormData({...formData, dueDate: e.target.value})} 
-              className="w-full border rounded-lg p-2 mt-1 text-sm focus:ring-2 focus:ring-blue-400 outline-none" 
+              className="w-full mt-2 bg-slate-50 border-none rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-blue-100 transition-all" 
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t mt-4">
+          <div className="flex gap-4 pt-4">
             <button 
               type="button" 
               onClick={onClose} 
-              className="px-4 py-2 text-gray-500 hover:text-gray-700 font-medium"
+              className="flex-1 px-4 py-4 rounded-2xl bg-slate-100 text-slate-500 text-[11px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
             >
               Cancel
             </button>
             <button 
               type="submit" 
               disabled={isSubmitting} 
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow-md transition-all disabled:bg-blue-300"
+              className="flex-1 px-4 py-4 rounded-2xl bg-blue-600 text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all disabled:opacity-50"
             >
               {isSubmitting ? "Saving..." : "Save Changes"}
             </button>
