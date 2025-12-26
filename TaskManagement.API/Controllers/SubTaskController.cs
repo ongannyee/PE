@@ -126,6 +126,7 @@ namespace TaskManagement.API.Controllers
                 .Where(a => a.SubTaskId == subTaskId)
                 .Select(a => new AttachmentDTO
                 {
+                    Id = a.Id,
                     AttachmentId = a.AttachmentId,
                     FileName = a.FileName,
                     FileUrl = a.FileUrl,
