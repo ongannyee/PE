@@ -2,6 +2,7 @@ namespace TaskManagement.API.Models.DTOs;
 
 public class TaskItemDTO
 {
+    public Guid Id { get; set; }
     public int TaskId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }

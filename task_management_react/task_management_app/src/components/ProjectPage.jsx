@@ -1,26 +1,32 @@
 import { useState, useEffect } from "react";
-import { fetchProjects, deleteProject, editProject } from "../API/ProjectAPI";
+import { 
+  fetchProjects, 
+  deleteProject, 
+  editProject, 
+  assignUserToProject, 
+  removeUserFromProject, 
+  fetchProjectMembers 
+} from "../API/ProjectAPI";
 import ProjectSearchBar from "../components/ProjectSearchBar";
 import ProjectTable from "../components/ProjectTable";
 import UpdateProjectModal from "../components/UpdateProjectModal";
 
-function ProjectPage({onClick}) {
+function ProjectPage({ onClick, currentUserId }) {
   const [search, setSearch] = useState("");
   const [projects, setProjects] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
 
-  // Fetch projects on mount
   useEffect(() => {
     fetchData();
   }, []);
 
-  // Fetch all projects
   const fetchData = async () => {
     try {
       const data = await fetchProjects();
-      const sorted = [...data].sort((a, b) => a.projectId - b.projectId);
+      // Sort by Integer ProjectId
+      const sorted = [...data].sort((a, b) => (a.projectId || 0) - (b.projectId || 0));
       setProjects(sorted);
       filterProjects(sorted, showArchived);
     } catch (error) {
@@ -28,118 +34,78 @@ function ProjectPage({onClick}) {
     }
   };
 
-  // Filter projects based on archived status
   const filterProjects = (allProjects, archived) => {
     setFiltered(allProjects.filter((p) => Boolean(p.isArchived) === archived));
   };
 
-  // Toggle archived/active view
-  const toggleArchived = () => {
-    const newValue = !showArchived;
-    setShowArchived(newValue);
-    filterProjects(projects, newValue);
+  const handleEditClick = (project) => {
+    setSelectedProject(project);
   };
 
-  // Search projects by name
-  const handleSearch = () => {
-    const keyword = search.trim().toLowerCase();
-    const list = projects.filter(
-      (p) =>
-        p.projectName.toLowerCase().includes(keyword) &&
-        Boolean(p.isArchived) === showArchived
-    );
-    setFiltered(list);
-  };
-
-  const handleReset = () => {
-    setSearch("");
-    filterProjects(projects, showArchived);
-  };
-
-  // Delete project
-  const handleDeleteProject = async (projectId) => {
-    await deleteProject(projectId);
-    const updatedProjects = projects.filter((p) => p.projectId !== projectId);
-    setProjects(updatedProjects);
-    filterProjects(updatedProjects, showArchived);
-  };
-
-  // Archive or restore project
-  const handleArchiveOrRestore = async (projectId) => {
+  const handleProjectUpdate = async (projectIdInt, updatedDataWithMembers) => {
     try {
-      // Find the project
-      const project = projects.find((p) => p.projectId === projectId);
-      if (!project) return;
+      const { members, ...projectData } = updatedDataWithMembers;
+      const projectGuid = projectData.id; 
+      
+      // Update Main Info (Int ID)
+      await editProject(projectIdInt, projectData);
 
-      // Convert current value to boolean (handles true/false and 1/0)
-      const currentIsArchived = Boolean(project.isArchived);
-      const newIsArchivedBool = !currentIsArchived; // toggle
+      // Sync Members (GUID)
+      const existingMembers = await fetchProjectMembers(projectGuid);
+      const existingIds = existingMembers.map(m => (m.id || m.userId).toLowerCase());
+      const newIds = members.map(m => m.id.toLowerCase());
 
-      // Prepare update data with all required fields
-      const updateData = {
-        id: project.id,
-        projectId: project.projectId,
-        projectName: project.projectName,
-        projectGoal: project.projectGoal || "",
-        startDate: project.startDate,
-        endDate: project.endDate,
-        // Backend expects a boolean here; DB will still store it as 1/0
-        isArchived: newIsArchivedBool,
-      };
+      const toAdd = members.filter(m => !existingIds.includes(m.id.toLowerCase()));
+      const toRemove = existingMembers.filter(m => !newIds.includes((m.id || m.userId).toLowerCase()));
 
-      // Call API to update
-      await editProject(projectId, updateData);
+      const syncPromises = [
+        ...toAdd.map(user => assignUserToProject({ projectId: projectGuid, userId: user.id })),
+        ...toRemove.map(user => removeUserFromProject({ projectId: projectGuid, userId: user.id }))
+      ];
 
-      // Refresh data
+      await Promise.all(syncPromises);
+      setSelectedProject(null);
       fetchData();
     } catch (error) {
-      console.error("Error archiving/restoring project:", error);
+      console.error("Sync Error:", error);
     }
   };
 
-  // Open project modal
-  const handleEditClick = (project) => setSelectedProject(project);
-
-  // Update project
-  const handleProjectUpdate = async (projectId, updatedProject) => {
-    await editProject(projectId, updatedProject);
-    setSelectedProject(null);
-    fetchData();
-  };
-
   return (
-    <div className="relative min-h-screen ">
-      {/* Top bar with search and toggle */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-        <ProjectSearchBar
-          search={search}
-          setSearch={setSearch}
-          onSearch={handleSearch}
-          onReset={handleReset}
+    <div className="relative p-4">
+      <div className="flex flex-col md:flex-row justify-between mb-4 gap-4">
+        <ProjectSearchBar 
+          search={search} 
+          setSearch={setSearch} 
+          onSearch={() => filterProjects(projects, showArchived)} 
+          onReset={fetchData} 
         />
-        <button
-      onClick={toggleArchived}
-      className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm w-48 h-10 rounded"
-    >
+        <button 
+          onClick={() => { setShowArchived(!showArchived); filterProjects(projects, !showArchived); }} 
+          className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition-colors"
+        >
           {showArchived ? "Show Active Projects" : "Show Archived Projects"}
         </button>
       </div>
 
-      {/* Project table */}
-      <ProjectTable
-        projects={filtered}
-        onDelete={handleDeleteProject}
-        onClick={onClick}
-        onEdit={handleEditClick}
-        onArchiveOrRestore={handleArchiveOrRestore}
+      <ProjectTable 
+        projects={filtered} 
+        onDelete={async (id) => { await deleteProject(id); fetchData(); }} 
+        onClick={onClick} 
+        onEdit={handleEditClick} 
+        onArchiveOrRestore={async (id) => {
+           const p = projects.find(x => x.projectId === id);
+           await editProject(id, { ...p, isArchived: !p.isArchived });
+           fetchData();
+        }} 
       />
 
-      {/* Update project modal */}
       {selectedProject && (
-        <UpdateProjectModal
-          project={selectedProject}
-          onClose={() => setSelectedProject(null)}
-          onUpdate={handleProjectUpdate}
+        <UpdateProjectModal 
+          project={selectedProject} 
+          currentUserId={currentUserId} 
+          onClose={() => setSelectedProject(null)} 
+          onUpdate={handleProjectUpdate} 
         />
       )}
     </div>

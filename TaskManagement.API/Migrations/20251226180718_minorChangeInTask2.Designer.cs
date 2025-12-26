@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskManagement.API.Data;
 
@@ -11,9 +12,11 @@ using TaskManagement.API.Data;
 namespace TaskManagement.API.Migrations
 {
     [DbContext(typeof(ProjectDBContext))]
-    partial class ProjectDBContextModelSnapshot : ModelSnapshot
+    [Migration("20251226180718_minorChangeInTask2")]
+    partial class minorChangeInTask2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -43,9 +46,6 @@ namespace TaskManagement.API.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid?>("SubTaskId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("TaskId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("TaskItemId")
@@ -80,9 +80,6 @@ namespace TaskManagement.API.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TaskItemId")
                         .HasColumnType("uniqueidentifier");
@@ -173,9 +170,6 @@ namespace TaskManagement.API.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SubTaskId"));
-
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TaskItemId")
                         .HasColumnType("uniqueidentifier");

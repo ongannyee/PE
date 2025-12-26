@@ -6,24 +6,23 @@ import ProjectPage from "./components/ProjectPage";
 import AddProjectPage from "./components/AddProjectPage";
 import ProjectTimelinePage from "./components/ProjectTimeLine";
 import UserTasks from './components/UserTasks';
-import ProjectDetails from "./components/ProjectDetails";
+import ProjectDetails from "./components/ProjectDetails"; // This now includes TaskDetailModal
 import LoginPage from "./components/LoginPage";
 
 function App() {
-  // 1. DEFINE ALL STATE (HOOKS) FIRST
+  // 1. STATE MANAGEMENT
   const [user, setUser] = useState(null); 
   const [activePage, setActivePage] = useState("projects");
   const [selectedProject, setSelectedProject] = useState(null);
   const [projects, setProjects] = useState([]);
 
-  // 2. DEFINE EFFECTS (HOOKS) NEXT
-  // Moved this ABOVE the conditional return
+  // 2. FETCH PROJECTS ON LOGIN
   useEffect(() => {
-    // Safety check: Do nothing if no user is logged in
     if (!user) return;
 
     const loadProjects = async () => {
       try {
+        // Fetch projects specifically associated with the logged-in user
         const data = await fetchUserProjects(user.id);
         setProjects(data);
       } catch (err) {
@@ -32,9 +31,9 @@ function App() {
     };
 
     loadProjects();
-  }, [user]); // Re-run if user object changes
+  }, [user]);
 
-  // 3. DEFINE HELPERS
+  // 3. EVENT HANDLERS
   const handleArchive = (id) => {
     setProjects(prev => prev.map(p => p.projectId === id ? { ...p, isArchived: true } : p));
   };
@@ -43,17 +42,18 @@ function App() {
     setProjects(prev => prev.filter(p => p.projectId !== id));
   };
 
+  // Navigates to the details view and stores the project GUID/Object
   const handleProjectClick = (project) => {
     setSelectedProject(project);    
     setActivePage("project-details"); 
   };
 
-  // 4. NOW WE CAN DO CONDITIONAL RENDERING (The "Gatekeeper")
+  // 4. AUTHENTICATION GATEKEEPER
   if (!user) {
     return <LoginPage onLogin={(userData) => setUser(userData)} />;
   }
 
-  // 5. Render Main Content (Only runs if user exists)
+  // 5. NAVIGATION LOGIC (The Switch)
   const renderContent = () => {
     switch (activePage) {
       case "projects":
@@ -84,12 +84,19 @@ function App() {
     }
   };
 
+  // 6. MAIN LAYOUT
   return (
     <div className="flex h-screen bg-gray-100">
+      {/* Pass state and setter to Sidebar so it can trigger page changes */}
       <Sidebar activePage={activePage} setActivePage={setActivePage} />
-      <div className="flex-1 flex flex-col">
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Header title={`Welcome, ${user.username}`} />
-        <main className=" flex-1 overflow-auto">{renderContent()}</main>
+        
+        {/* Main viewing area */}
+        <main className="flex-1 overflow-auto bg-gray-50">
+          {renderContent()}
+        </main>
       </div>
     </div>
   );

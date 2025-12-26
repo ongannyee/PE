@@ -13,16 +13,13 @@ namespace TaskManagement.API.Controllers
     {
         private readonly ProjectDBContext _context = dBContext;
 
-        // ==========================================
-        // STANDARD CRUD OPERATIONS
-        // ==========================================
-
         [HttpGet]
         public IActionResult GetAllTasks()
         {
             var tasks = _context.Tasks.ToList();
             var tasksDTO = tasks.Select(t => new TaskItemDTO 
             { 
+                Id = t.Id,
                 TaskId = t.TaskId, 
                 Title = t.Title, 
                 Description = t.Description, 
@@ -40,7 +37,6 @@ namespace TaskManagement.API.Controllers
         {
             var task = _context.Tasks.FirstOrDefault(t => t.TaskId == taskId);
             if (task == null) return NotFound();
-            
             return Ok(task);
         }
 
@@ -61,7 +57,6 @@ namespace TaskManagement.API.Controllers
 
             _context.Tasks.Add(task);
             _context.SaveChanges();
-            
             return Ok(task);
         }
 
@@ -78,7 +73,13 @@ namespace TaskManagement.API.Controllers
             task.DueDate = updateDto.DueDate;
             
             _context.SaveChanges();
-            return Ok(task);
+            
+            return Ok(new TaskItemDTO {
+                Id = task.Id,
+                TaskId = task.TaskId,
+                Title = task.Title,
+                Status = task.Status.ToString()
+            });
         }
 
         [HttpDelete("{taskId:int}")]
@@ -92,18 +93,39 @@ namespace TaskManagement.API.Controllers
             return NoContent();
         }
 
-        // ==========================================
-        // ASSOCIATION & RELATIONSHIP METHODS
-        // ==========================================
-
         [HttpPost("AssignUser")]
         public IActionResult AssignUser([FromBody] TaskAssignmentDTO dto)
         {
+            // CRITICAL: Check if the Task GUID actually exists first
+            var taskExists = _context.Tasks.Any(t => t.Id == dto.TaskId);
+            if (!taskExists) 
+            {
+                return BadRequest($"Task with GUID {dto.TaskId} does not exist.");
+            }
+
+            var exists = _context.TaskAssignments
+                .Any(ta => ta.TaskId == dto.TaskId && ta.UserId == dto.UserId);
+            
+            if (exists) return Ok(new { Message = "User already assigned." });
+
             var assignment = new TaskAssignment 
-            { UserId = dto.UserId,TaskId = dto.TaskId, TaskItemId = dto.TaskId };
-            _context.TaskAssignments.Add(assignment);
-            _context.SaveChanges();
-            return Ok(new { Message = "User assigned to task successfully" });
+            { 
+                UserId = dto.UserId,
+                TaskId = dto.TaskId 
+            };
+
+            try 
+            {
+                _context.TaskAssignments.Add(assignment);
+                _context.SaveChanges();
+                return Ok(new { Message = "User assigned successfully" });
+            }
+            catch (Exception ex)
+            {
+                // Return explicit inner message for debugging
+                var msg = ex.InnerException?.Message ?? ex.Message;
+                return StatusCode(500, $"Database Error: {msg}");
+            }
         }
 
         [HttpDelete("RemoveUser")]
@@ -112,27 +134,25 @@ namespace TaskManagement.API.Controllers
             var assignment = _context.TaskAssignments
                 .FirstOrDefault(ta => ta.TaskId == dto.TaskId && ta.UserId == dto.UserId);
 
-            if (assignment == null) return NotFound("User is not assigned to this task.");
+            if (assignment == null) return NotFound("User not found on task.");
 
             _context.TaskAssignments.Remove(assignment);
             _context.SaveChanges();
-            return Ok(new { Message = "User removed from task successfully" });
+            return Ok(new { Message = "User removed successfully" });
         }
 
-        // GET: api/Task/user/{userId} personal user tab
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetMyAssignedTasks(Guid userId)
         {
-            // 1. Query the bridge table for this specific user
             var assignedTasks = await _context.TaskAssignments
                 .Where(ta => ta.UserId == userId)
-                .Include(ta => ta.TaskItem) // Load the Task details
-                .Select(ta => ta.TaskItem)  // Flatten to just the Task objects
+                .Include(ta => ta.TaskItem)
+                .Select(ta => ta.TaskItem)
                 .ToListAsync();
 
-            // 2. Convert to DTO (Matches the format of your GetAllTasks method)
             var tasksDTO = assignedTasks.Select(t => new TaskItemDTO 
             { 
+                Id = t.Id,
                 TaskId = t.TaskId, 
                 Title = t.Title, 
                 Description = t.Description, 
@@ -145,48 +165,21 @@ namespace TaskManagement.API.Controllers
             return Ok(tasksDTO);
         }
 
-        // 1. GET all Subtasks for a specific Task
-        [HttpGet("{taskId:guid}/subtasks")]
-        public IActionResult GetSubTasksByTask(Guid taskId)
-        {
-            var subtasks = _context.SubTasks
-                .Where(s => s.TaskItemId == taskId)
-                .Select(s => new SubTaskDTO { SubTaskId = s.SubTaskId, Title = s.Title, IsCompleted = s.IsCompleted })
-                .ToList();
-
-            return Ok(subtasks);
-        }
-
-        // 2. GET all Members (Users) assigned to a specific Task
         [HttpGet("{taskId:guid}/members")]
         public IActionResult GetTaskMembers(Guid taskId)
         {
             var members = _context.TaskAssignments
                 .Where(ta => ta.TaskId == taskId)
                 .Include(ta => ta.User)
-                .Select(ta => new UserDTO { Id = ta.User.Id, UserId = ta.User.UserId, Username = ta.User.Username, Email = ta.User.Email })
-                .ToList();
-
-            return Ok(members);
-        }
-
-        // 3. GET all Comments for a specific Task
-        [HttpGet("{taskId:guid}/comments")]
-        public IActionResult GetTaskComments(Guid taskId)
-        {
-            var comments = _context.Comments
-                .Where(c => c.TaskItemId == taskId)
-                .Include(c => c.User)
-                .Select(c => new CommentDTO
-                {
-                    CommentId = c.CommentId,
-                    Text = c.Text,
-                    CreatedAt = c.CreatedAt,
-                    Username = c.User.Username
+                .Select(ta => new UserDTO { 
+                    Id = ta.User.Id, 
+                    UserId = ta.User.UserId, 
+                    Username = ta.User.Username, 
+                    Email = ta.User.Email 
                 })
                 .ToList();
 
-            return Ok(comments);
+            return Ok(members);
         }
     }
 }

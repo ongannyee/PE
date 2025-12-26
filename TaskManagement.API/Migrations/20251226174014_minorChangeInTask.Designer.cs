@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskManagement.API.Data;
 
@@ -11,9 +12,11 @@ using TaskManagement.API.Data;
 namespace TaskManagement.API.Migrations
 {
     [DbContext(typeof(ProjectDBContext))]
-    partial class ProjectDBContextModelSnapshot : ModelSnapshot
+    [Migration("20251226174014_minorChangeInTask")]
+    partial class minorChangeInTask
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -43,9 +46,6 @@ namespace TaskManagement.API.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid?>("SubTaskId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("TaskId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("TaskItemId")
@@ -80,9 +80,6 @@ namespace TaskManagement.API.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("TaskItemId")
                         .HasColumnType("uniqueidentifier");
@@ -174,9 +171,6 @@ namespace TaskManagement.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SubTaskId"));
 
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid>("TaskItemId")
                         .HasColumnType("uniqueidentifier");
 
@@ -217,9 +211,12 @@ namespace TaskManagement.API.Migrations
                     b.Property<Guid>("TaskId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("TaskItemId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("UserId", "TaskId");
 
-                    b.HasIndex("TaskId");
+                    b.HasIndex("TaskItemId");
 
                     b.ToTable("TaskAssignments");
                 });
@@ -393,7 +390,7 @@ namespace TaskManagement.API.Migrations
                 {
                     b.HasOne("TaskManagement.API.Models.Domain.TaskItem", "TaskItem")
                         .WithMany("TaskAssignments")
-                        .HasForeignKey("TaskId")
+                        .HasForeignKey("TaskItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

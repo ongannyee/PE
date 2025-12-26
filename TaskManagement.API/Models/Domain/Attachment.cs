@@ -16,7 +16,7 @@ namespace TaskManagement.API.Models.Domain
         public DateTime UploadedAt { get; set; }
 
         // Allows a file to be attached to either a Task or a SubTask
-        public Guid? TaskItemId { get; set; }
+        public Guid? TaskId { get; set; }
         public TaskItem? TaskItem { get; set; }
 
         public Guid? SubTaskId { get; set; }

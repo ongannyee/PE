@@ -77,6 +77,19 @@ namespace TaskManagement.API.Data
             modelBuilder.Entity<TaskAssignment>()
                 .HasKey(ta => new { ta.UserId, ta.TaskId });
 
+            // 2. Configure the Relationship to User
+            modelBuilder.Entity<TaskAssignment>()
+                .HasOne(ta => ta.User)
+                .WithMany(u => u.TaskAssignments)
+                .HasForeignKey(ta => ta.UserId);
+
+            // 3. Configure the Relationship to TaskItem (The Fix)
+            modelBuilder.Entity<TaskAssignment>()
+                .HasOne(ta => ta.TaskItem)
+                .WithMany(t => t.TaskAssignments)
+                .HasForeignKey(ta => ta.TaskId)
+                .HasPrincipalKey(t => t.Id);
+
             // SubTask <-> User
             modelBuilder.Entity<SubTaskAssignment>()
                 .HasKey(sta => new { sta.UserId, sta.SubTaskId });

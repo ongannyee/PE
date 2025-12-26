@@ -10,13 +10,13 @@ export const fetchAllComments = async () => {
 
 // 2. GET: Comments for a specific task
 // Matches [HttpGet("task/{taskId:guid}")]
-export const fetchCommentsByTask = async (taskGuid) => {
+export const fetchTaskComments = async (taskGuid) => {
     const response = await axios.get(`${API_URL}/task/${taskGuid}`);
     return response.data;
 };
 
 // 3. POST: Add a new comment
-// commentData: { text: "string", taskItemId: "guid", userId: "guid" }
+// commentData: { text: "string", TaskId: "guid", userId: "guid" }
 export const addComment = async (commentData) => {
     const response = await axios.post(API_URL, commentData);
     return response.data;

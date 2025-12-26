@@ -12,7 +12,7 @@ namespace TaskManagement.API.Models.Domain
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // Foreign Key: Which Task does this comment belong to?
-        public Guid TaskItemId { get; set; }
+        public Guid TaskId { get; set; }
         public TaskItem TaskItem { get; set; } = null!;
 
         // Foreign Key: Who wrote this comment?

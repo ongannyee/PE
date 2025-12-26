@@ -40,7 +40,7 @@ namespace TaskManagement.API.Controllers
                 Id = Guid.NewGuid(), 
                 Title = dto.Title, 
                 IsCompleted = false, 
-                TaskItemId = taskId 
+                TaskId = taskId 
             };
             _context.SubTasks.Add(subTask);
             _context.SaveChanges();

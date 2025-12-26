@@ -2,6 +2,11 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5017/api/subtask";
 
+export const fetchSubTasksByTask = async (taskGuid) => {
+    const response = await axios.get(`http://localhost:5017/api/taskitem/${taskGuid}/subtasks`);
+    return response.data;
+};
+
 // --- STANDARD CRUD OPERATIONS ---
 
 // 1. GET all subtasks

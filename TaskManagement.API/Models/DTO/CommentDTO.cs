@@ -11,6 +11,6 @@ public class CommentDTO
 public class AddCommentRequestDTO
 {
     public required string Text { get; set; }
-    public Guid TaskItemId { get; set; }
+    public Guid TaskId { get; set; }
     public Guid UserId { get; set; }
 }

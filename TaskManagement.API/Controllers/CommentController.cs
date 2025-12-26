@@ -20,7 +20,7 @@ namespace TaskManagement.API.Controllers
         [HttpGet("task/{taskId:guid}")]
         public IActionResult GetCommentsByTask(Guid taskId)
         {
-            var comments = _context.Comments.Where(c => c.TaskItemId == taskId).ToList();
+            var comments = _context.Comments.Where(c => c.TaskId == taskId).ToList();
             return Ok(comments);
         }
 
@@ -32,7 +32,7 @@ namespace TaskManagement.API.Controllers
                 Id = Guid.NewGuid(),
                 Text = commentRequest.Text,
                 CreatedAt = DateTime.UtcNow,
-                TaskItemId = commentRequest.TaskItemId,
+                TaskId = commentRequest.TaskId,
                 UserId = commentRequest.UserId
             };
             _context.Comments.Add(comment);

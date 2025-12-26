@@ -11,7 +11,7 @@ namespace TaskManagement.API.Models.Domain
         public bool IsCompleted { get; set; }
 
         // Foreign Key back to Task
-        public Guid TaskItemId { get; set; } 
+        public Guid TaskId { get; set; } 
         public TaskItem TaskItem { get; set; } = null!;
 
         // Support for File Attachments (Usually stored as URLs or Paths)

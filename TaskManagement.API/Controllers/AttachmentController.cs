@@ -92,7 +92,7 @@ namespace TaskManagement.API.Controllers
                 Id = Guid.NewGuid(),
                 FileName = file.FileName, // Original name for the user
                 FileUrl = fullPath,       // Full path for the system to find it
-                TaskItemId = taskId,
+                TaskId = taskId,
                 SubTaskId = subTaskId,
                 UploadedAt = DateTime.UtcNow
             };
