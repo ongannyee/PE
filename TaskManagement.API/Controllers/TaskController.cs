@@ -54,6 +54,7 @@ namespace TaskManagement.API.Controllers
                 Description = createDto.Description, 
                 Status = (Models.Domain.TaskStatus)createDto.Status, 
                 Priority = (Models.Domain.TaskPriority)createDto.Priority, 
+                DueDate = createDto.DueDate,
                 ProjectId = createDto.ProjectId, 
                 CreatedAt = DateTime.UtcNow 
             };

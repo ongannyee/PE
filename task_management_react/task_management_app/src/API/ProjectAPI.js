@@ -49,3 +49,35 @@ export const deleteProject = async (projectId) => {
     throw error;
   }
 };
+
+
+// ARCHIVE project
+export const archiveProject = async (projectId) => {
+    const response = await axios.put(`${API_URL}/${projectId}/archive`);
+    return response.data;
+};
+
+// ASSIGN User to Project
+export const assignUserToProject = async (assignmentData) => {
+    // assignmentData should be { projectId: "guid", userId: "guid" }
+    const response = await axios.post(`${API_URL}/AssignUser`, assignmentData);
+    return response.data;
+};
+
+// REMOVE User from Project
+export const removeUserFromProject = async (assignmentData) => {
+    const response = await axios.delete(`${API_URL}/RemoveUser`, { data: assignmentData });
+    return response.data;
+};
+
+// GET all Members of a Project
+export const fetchProjectMembers = async (projectGuid) => {
+    const response = await axios.get(`${API_URL}/${projectGuid}/members`);
+    return response.data;
+};
+
+// GET all Tasks of a Project
+export const fetchProjectTasks = async (projectGuid) => {
+    const response = await axios.get(`${API_URL}/${projectGuid}/tasks`);
+    return response.data;
+};
