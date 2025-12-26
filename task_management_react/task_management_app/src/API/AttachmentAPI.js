@@ -2,20 +2,19 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5017/api/attachment";
 
-// 1. GET: List all attachments (Admin/Audit)
+// 1. GET: List all attachments (For Admin/Audit)
 export const fetchAllAttachments = async () => {
   const response = await axios.get(API_URL);
   return response.data;
 };
 
 // 2. POST: Upload File for a Task
-// file: The file object from <input type="file" />
-// taskId: The Guid of the task
-export const uploadToTask = async (file, taskId) => {
+// Matches: [HttpPost("upload/task/{taskId:guid}")]
+export const uploadToTask = async (file, taskIdGuid) => {
   const formData = new FormData();
-  formData.append("file", file); // Key must match 'IFormFile file' in C#
+  formData.append("file", file); // Must match 'IFormFile file' in C#
 
-  const response = await axios.post(`${API_URL}/upload/task/${taskId}`, formData, {
+  const response = await axios.post(`${API_URL}/upload/task/${taskIdGuid}`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -24,12 +23,12 @@ export const uploadToTask = async (file, taskId) => {
 };
 
 // 3. POST: Upload File for a SubTask
-// subTaskId: The Guid of the subtask
-export const uploadToSubTask = async (file, subTaskId) => {
+// Matches: [HttpPost("upload/subtask/{subTaskId:guid}")]
+export const uploadToSubTask = async (file, subTaskIdGuid) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await axios.post(`${API_URL}/upload/subtask/${subTaskId}`, formData, {
+  const response = await axios.post(`${API_URL}/upload/subtask/${subTaskIdGuid}`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -37,9 +36,9 @@ export const uploadToSubTask = async (file, subTaskId) => {
   return response.data;
 };
 
-// 4. DELETE: Remove Attachment
-// attachmentId: The integer ID
-export const deleteAttachment = async (attachmentId) => {
-  const response = await axios.delete(`${API_URL}/${attachmentId}`);
+// 4. DELETE: Remove Attachment and physical file
+// Matches: [HttpDelete("{attachmentId:int}")]
+export const deleteAttachment = async (attachmentIdInt) => {
+  const response = await axios.delete(`${API_URL}/${attachmentIdInt}`);
   return response.data;
 };

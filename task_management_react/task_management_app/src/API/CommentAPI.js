@@ -16,15 +16,15 @@ export const fetchCommentsByTask = async (taskGuid) => {
 };
 
 // 3. POST: Add a new comment
+// commentData: { text: "string", taskItemId: "guid", userId: "guid" }
 export const addComment = async (commentData) => {
-    // commentData: { text: "string", taskItemId: "guid", userId: "guid" }
     const response = await axios.post(API_URL, commentData);
     return response.data;
 };
 
 // 4. PUT: Update an existing comment
+// Note: The controller expects [FromBody] string text (raw string, not an object)
 export const updateComment = async (commentIdInt, text) => {
-    // Note: Your controller expects the body to be just a raw string
     const response = await axios.put(`${API_URL}/${commentIdInt}`, `"${text}"`, {
         headers: { "Content-Type": "application/json" }
     });

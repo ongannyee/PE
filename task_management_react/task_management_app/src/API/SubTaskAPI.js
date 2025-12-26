@@ -10,16 +10,16 @@ export const fetchAllSubTasks = async () => {
     return response.data;
 };
 
-// 2. GET subtask by Integer ID
+// 2. GET subtask by Integer ID (Matches {subTaskId:int})
 export const fetchSubTaskById = async (subTaskIdInt) => {
     const response = await axios.get(`${API_URL}/${subTaskIdInt}`);
     return response.data;
 };
 
-// 3. CREATE a new subtask
-// Note: Matches [FromQuery] Guid taskId in your controller
+// 3. CREATE a new subtask 
+// Matches: [FromBody] SubTaskDTO dto AND [FromQuery] Guid taskId
 export const createSubTask = async (taskGuid, subTaskData) => {
-    // subTaskData: { title: "string" }
+    // subTaskData should be { title: "Read Documentation" }
     const response = await axios.post(`${API_URL}?taskId=${taskGuid}`, subTaskData);
     return response.data;
 };
@@ -39,16 +39,14 @@ export const deleteSubTask = async (subTaskIdInt) => {
 
 // --- ASSOCIATION & RELATIONSHIP METHODS ---
 
-// 6. ASSIGN User to SubTask
+// 6. ASSIGN User to SubTask (Requires GUIDs in assignmentData)
 export const assignUserToSubTask = async (assignmentData) => {
-    // assignmentData: { userId: "guid", subTaskId: "guid" }
     const response = await axios.post(`${API_URL}/AssignUser`, assignmentData);
     return response.data;
 };
 
 // 7. REMOVE User from SubTask
 export const removeUserFromSubTask = async (assignmentData) => {
-    // assignmentData: { userId: "guid", subTaskId: "guid" }
     const response = await axios.delete(`${API_URL}/RemoveUser`, { data: assignmentData });
     return response.data;
 };
