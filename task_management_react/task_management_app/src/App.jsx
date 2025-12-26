@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { fetchUserProjects } from "./API/UserAPI";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import ProjectPage from "./components/ProjectPage";
@@ -21,19 +22,16 @@ function App() {
     // Safety check: Do nothing if no user is logged in
     if (!user) return;
 
-    const fetchProjects = async () => {
+    const loadProjects = async () => {
       try {
-        const response = await fetch(`http://localhost:5017/api/user/${user.id}/projects`);
-        if (response.ok) {
-          const data = await response.json();
-          setProjects(data);
-        }
+        const data = await fetchUserProjects(user.id);
+        setProjects(data);
       } catch (err) {
         console.error("Failed to fetch projects", err);
       }
     };
 
-    fetchProjects();
+    loadProjects();
   }, [user]); // Re-run if user object changes
 
   // 3. DEFINE HELPERS

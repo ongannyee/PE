@@ -10,6 +10,13 @@ export const registerUser = async (userData) => {
     const response = await axios.post(API_URL, userData);
     return response.data;
 };
+// 1.5 LOGIN User (Add this!)
+// Matches: [HttpPost("login")] (Assuming you created AuthController)
+export const loginUser = async (credentials) => {
+    // credentials = { email: "...", password: "..." }
+    const response = await axios.post("http://localhost:5017/api/Auth/login", credentials);
+    return response.data;
+};
 
 // 2. GET all users
 // Matches: [HttpGet] GetAllUsers()

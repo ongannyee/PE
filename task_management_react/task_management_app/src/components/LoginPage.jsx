@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+// 1. Import the API functions
+import { loginUser, registerUser } from '../API/UserAPI';
 
 const LoginPage = ({ onLogin }) => {
   const [isRegistering, setIsRegistering] = useState(false);
@@ -13,46 +15,29 @@ const LoginPage = ({ onLogin }) => {
     e.preventDefault();
     setError('');
 
-    const endpoint = isRegistering ? 'register' : 'login';
-    const url = `http://localhost:5017/api/Auth/${endpoint}`;
-
     try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      // --- SAFETY CHECK: Handle non-JSON responses ---
-      let data;
-      const contentType = response.headers.get("content-type");
-      
-      if (contentType && contentType.indexOf("application/json") !== -1) {
-        // It is JSON, parse it safely
-        data = await response.json();
-      } else {
-        // It is NOT JSON (maybe plain text error or 500 server crash)
-        const text = await response.text();
-        // Create a fake data object to handle the error below
-        data = { Message: text || "An unknown error occurred" };
-      }
-      // -----------------------------------------------
-
-      if (!response.ok) {
-        // If server sent { Message: "..." } use that, otherwise use default
-        throw new Error(data.Message || "Authentication failed");
-      }
-
+      // 2. Logic is now much simpler!
       if (isRegistering) {
+        // REGISTER
+        await registerUser(formData);
         alert("Registration successful! Please log in.");
-        setIsRegistering(false); 
+        setIsRegistering(false); // Switch to login view
       } else {
-        onLogin(data); 
+        // LOGIN
+        // We pass only the fields the API expects
+        const data = await loginUser({ 
+            email: formData.email, 
+            password: formData.password 
+        });
+        
+        // Success! Pass the user data up to App.jsx
+        onLogin(data);
       }
 
     } catch (err) {
-      console.error("Login Error:", err);
-      setError(err.message || "Server connection failed");
+      console.error("Authentication Error:", err);
+      // The API wrapper throws standard JS errors now, so we just read the message
+      setError(err.message || "Authentication failed. Please check your connection.");
     }
   };
 

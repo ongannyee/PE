@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+// 1. IMPORT API
+import { addProject, assignUserToProject } from '../API/ProjectAPI';
 
-// 1. Accept 'currentUserId' from App.jsx
 const AddProjectPage = ({ setActivePage, currentUserId }) => {
   const [formData, setFormData] = useState({
     projectName: '',
@@ -9,8 +10,6 @@ const AddProjectPage = ({ setActivePage, currentUserId }) => {
     endDate: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // (Hardcoded userId is GONE)
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -21,38 +20,20 @@ const AddProjectPage = ({ setActivePage, currentUserId }) => {
     setIsSubmitting(true);
 
     try {
-      // --- STEP 1: CREATE PROJECT ---
-      const createResponse = await fetch('http://localhost:5017/api/Project', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // 2. USE API FUNCTION (Create Project)
+      const newProject = await addProject({
           projectName: formData.projectName,
           projectGoal: formData.projectGoal,
           startDate: formData.startDate,
           endDate: formData.endDate,
           isArchived: false
-        }),
       });
 
-      if (!createResponse.ok) {
-        const errorText = await createResponse.text();
-        throw new Error(`Failed to create project: ${errorText}`);
-      }
-
-      const newProject = await createResponse.json();
-
-      // --- STEP 2: ASSIGN USER ---
-      // 2. Use 'currentUserId' here
-      const assignResponse = await fetch('http://localhost:5017/api/Project/AssignUser', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // 3. USE API FUNCTION (Assign User)
+      await assignUserToProject({
           projectId: newProject.id, 
-          userId: currentUserId // <--- Dynamic ID!
-        }),
+          userId: currentUserId 
       });
-
-      if (!assignResponse.ok) console.warn("Auto-assign failed.");
 
       alert("Project created successfully!");
       if (setActivePage) setActivePage('projects'); 
@@ -68,7 +49,7 @@ const AddProjectPage = ({ setActivePage, currentUserId }) => {
     <div className="p-8 max-w-2xl mx-auto">
       <h2 className="text-3xl font-bold text-gray-800 mb-6">Start a New Project</h2>
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md space-y-4">
-        {/* Form fields same as before... */}
+        {/* ... Inputs remain exactly the same ... */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Project Name</label>
           <input type="text" name="projectName" value={formData.projectName} onChange={handleChange} required className="mt-1 block w-full px-4 py-2 border rounded-md" />

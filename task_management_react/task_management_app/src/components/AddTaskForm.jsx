@@ -1,31 +1,28 @@
 import React, { useState, useEffect } from 'react';
+// 1. IMPORT API FUNCTIONS
+import { fetchUserProjects } from '../API/UserAPI';
+import { createTask, assignUserToTask } from '../API/TaskItemAPI';
 
 const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
-  
-  // If a default is passed, use it. Otherwise start empty.
   const [selectedProjectId, setSelectedProjectId] = useState(defaultProjectId || '');
-  
   const [projects, setProjects] = useState([]);
-  const [loadingProjects, setLoadingProjects] = useState(!defaultProjectId); // Only load if we don't have a default
+  const [loadingProjects, setLoadingProjects] = useState(!defaultProjectId);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Fetch User's Projects ONLY if no defaultProjectId is provided
   useEffect(() => {
     if (defaultProjectId) {
         setSelectedProjectId(defaultProjectId);
         return; 
     }
 
-    const fetchProjects = async () => {
+    const loadProjects = async () => {
       try {
-        const response = await fetch(`http://localhost:5017/api/user/${userId}/projects`);
-        if (response.ok) {
-          const data = await response.json();
-          setProjects(data);
-          if (data.length > 0) setSelectedProjectId(data[0].id);
-        }
+        // 2. USE API (Fetch Projects)
+        const data = await fetchUserProjects(userId);
+        setProjects(data);
+        if (data.length > 0) setSelectedProjectId(data[0].id);
       } catch (err) {
         console.error("Failed to load projects", err);
       } finally {
@@ -33,7 +30,7 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
       }
     };
 
-    if (userId) fetchProjects();
+    if (userId) loadProjects();
   }, [userId, defaultProjectId]);
 
   const handleSubmit = async (e) => {
@@ -46,34 +43,20 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
     setIsSubmitting(true);
 
     try {
-      // Create Task
-      const createResponse = await fetch('http://localhost:5017/api/Task', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // 3. USE API (Create Task)
+      const newTask = await createTask({
           title: title,
           description: desc,
           status: 0, 
           priority: 1, 
-          projectId: selectedProjectId // Uses the passed prop OR the dropdown value
-        }),
+          projectId: selectedProjectId
       });
 
-      if (!createResponse.ok) throw new Error("Failed to create task");
-      
-      const newTask = await createResponse.json();
-
-      // Assign to User
-      const assignResponse = await fetch('http://localhost:5017/api/Task/AssignUser', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // 4. USE API (Assign User)
+      await assignUserToTask({
           userId: userId,
-          taskId: newTask.id // Ensure we use the GUID
-        }),
+          taskId: newTask.id 
       });
-
-      if (!assignResponse.ok) throw new Error("Task created but assignment failed.");
 
       setTitle('');
       setDesc('');
@@ -90,7 +73,6 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
     <form onSubmit={handleSubmit} className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
       <h3 className="text-lg font-bold mb-3 text-gray-700">Add New Task</h3>
       
-      {/* Only show dropdown if NO default project was passed */}
       {!defaultProjectId && (
         <div className="mb-3">
           <label className="block text-sm font-medium text-gray-700">Project</label>
@@ -108,6 +90,7 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
         </div>
       )}
 
+      {/* ... Inputs remain the same ... */}
       <div className="mb-3">
         <input 
           type="text" 
@@ -118,7 +101,6 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
           required
         />
       </div>
-       {/* ... Description input remains the same ... */}
        <div className="mb-3">
         <textarea 
           value={desc}

@@ -1,32 +1,20 @@
 import React, { useState, useEffect } from 'react';
+// 1. IMPORT API
+import { fetchUserTasks } from '../API/UserAPI';
 
-// 1. We accept 'currentUserId' from App.jsx
 const UserTasks = ({ currentUserId }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // (The hardcoded const userId = "..." is GONE)
-
   useEffect(() => {
-    const fetchTasks = async () => {
-      // Safety check: Don't fetch if we don't have an ID yet
+    const loadTasks = async () => {
       if (!currentUserId) return;
 
       try {
         setLoading(true);
-        // 2. We use the prop variable here
-        const response = await fetch(`http://localhost:5017/api/user/${currentUserId}/tasks`);
-        
-        if (!response.ok) {
-           if(response.status === 404) {
-             setTasks([]); 
-             return;
-           }
-           throw new Error('Failed to fetch tasks');
-        }
-
-        const data = await response.json();
+        // 2. USE API FUNCTION
+        const data = await fetchUserTasks(currentUserId);
         setTasks(data);
       } catch (err) {
         setError(err.message);
@@ -35,10 +23,9 @@ const UserTasks = ({ currentUserId }) => {
       }
     };
 
-    fetchTasks();
-  }, [currentUserId]); // 3. Re-run this if currentUserId changes
+    loadTasks();
+  }, [currentUserId]);
 
-  // Helper to color-code statuses
   const getStatusColor = (status) => {
     const s = status?.toLowerCase() || "";
     if (s === 'completed' || s === 'done') return 'bg-green-100 text-green-800 border-green-200';
