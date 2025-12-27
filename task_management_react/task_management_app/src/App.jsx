@@ -8,6 +8,7 @@ import ProjectTimelinePage from "./components/ProjectTimeLine";
 import UserTasks from './components/UserTasks';
 import ProjectDetails from "./components/ProjectDetails";
 import LoginPage from "./components/LoginPage";
+import StatisticsPage from "./components/StatisticsPage";
 
 function App() {
   const [user, setUser] = useState(null); 
@@ -69,6 +70,8 @@ function App() {
             onClick={handleProjectClick}
           />
         );
+      case "statistics":
+        return <StatisticsPage currentUserId={user.id} />;
       case "project-details":
         return (
             <ProjectDetails 

@@ -193,7 +193,9 @@ namespace TaskManagement.API.Controllers
                     Status = t.Status.ToString(),
                     Priority = t.Priority.ToString(),
                     DueDate = t.DueDate,
-                    ProjectId = t.ProjectId
+                    ProjectId = t.ProjectId,
+                    CreatedAt = t.CreatedAt,
+                    CompletedAt = t.CompletedAt
                 })
                 .ToList();
 

@@ -82,6 +82,18 @@ namespace TaskManagement.API.Controllers
             var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id);
             if (task == null) return NotFound();
 
+            var newStatus = (Models.Domain.TaskStatus)updateDto.Status;
+            // If moving TO Done
+            if (newStatus == Models.Domain.TaskStatus.Done && task.Status != Models.Domain.TaskStatus.Done)
+            {
+                task.CompletedAt = DateTime.UtcNow;
+            }
+            // If moving FROM Done back to ToDo/InProgress
+            else if (newStatus != Models.Domain.TaskStatus.Done && task.Status == Models.Domain.TaskStatus.Done)
+            {
+                task.CompletedAt = null;
+            }
+
             task.Title = updateDto.Title;
             task.Description = updateDto.Description;
             task.Status = (Models.Domain.TaskStatus)updateDto.Status;
@@ -94,7 +106,8 @@ namespace TaskManagement.API.Controllers
                 Id = task.Id,
                 TaskId = task.TaskId,
                 Title = task.Title,
-                Status = task.Status.ToString()
+                Status = task.Status.ToString(),
+                CompletedAt = task.CompletedAt
             });
         }
 
