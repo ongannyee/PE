@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-// 1. Import the API functions
 import { loginUser, registerUser } from '../API/UserAPI';
 
 const LoginPage = ({ onLogin }) => {
@@ -16,28 +15,37 @@ const LoginPage = ({ onLogin }) => {
     setError('');
 
     try {
-      // 2. Logic is now much simpler!
       if (isRegistering) {
-        // REGISTER
         await registerUser(formData);
         alert("Registration successful! Please log in.");
-        setIsRegistering(false); // Switch to login view
+        setIsRegistering(false); 
       } else {
-        // LOGIN
-        // We pass only the fields the API expects
-        const data = await loginUser({ 
+        // 1. Call API
+        const response = await loginUser({ 
             email: formData.email, 
             password: formData.password 
         });
-        
-        // Success! Pass the user data up to App.jsx
-        onLogin(data);
+
+        // 2. Intelligent Data Unwrapping
+        const responseData = response.data ? response.data : response;
+        const token = responseData.Token || responseData.token;
+        const user = responseData.User || responseData.user;
+
+        if (!token || !user) {
+            throw new Error("Login succeeded, but data is missing. Check console.");
+        }
+
+        // 3. SAVE TO LOCAL STORAGE (Crucial for persistence)
+        localStorage.setItem("authToken", token);
+        localStorage.setItem("user", JSON.stringify(user));
+
+        // 4. Update App State
+        onLogin(user);
       }
 
     } catch (err) {
       console.error("Authentication Error:", err);
-      // The API wrapper throws standard JS errors now, so we just read the message
-      setError(err.message || "Authentication failed. Please check your connection.");
+      setError(err.message || "Authentication failed.");
     }
   };
 
@@ -54,52 +62,25 @@ const LoginPage = ({ onLogin }) => {
           {isRegistering && (
             <div>
               <label className="block text-sm font-medium text-gray-700">Username</label>
-              <input
-                name="username"
-                type="text"
-                className="w-full border p-2 rounded"
-                onChange={handleChange}
-                required
-              />
+              <input name="username" type="text" className="w-full border p-2 rounded" onChange={handleChange} required />
             </div>
           )}
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Email</label>
-            <input
-              name="email"
-              type="email"
-              className="w-full border p-2 rounded"
-              onChange={handleChange}
-              required
-            />
+            <input name="email" type="email" className="w-full border p-2 rounded" onChange={handleChange} required />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input
-              name="password"
-              type="password"
-              className="w-full border p-2 rounded"
-              onChange={handleChange}
-              required
-            />
+            <input name="password" type="password" className="w-full border p-2 rounded" onChange={handleChange} required />
           </div>
-
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-          >
+          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
             {isRegistering ? "Sign Up" : "Log In"}
           </button>
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-600">
           {isRegistering ? "Already have an account?" : "No account yet?"}{" "}
-          <button
-            onClick={() => setIsRegistering(!isRegistering)}
-            className="text-blue-600 font-semibold hover:underline"
-          >
+          <button onClick={() => setIsRegistering(!isRegistering)} className="text-blue-600 font-semibold hover:underline">
             {isRegistering ? "Log In" : "Register"}
           </button>
         </p>
