@@ -92,7 +92,6 @@ const ProjectDetails = ({ project, onBack, currentUserId }) => {
     setTaskFiles([]); 
     
     try {
-      // Fetch using the corrected TaskItemAPI function
       const taskAttachments = await fetchTaskAttachments(task.id);
       setTaskFiles(taskAttachments || []);
 
@@ -162,7 +161,22 @@ const ProjectDetails = ({ project, onBack, currentUserId }) => {
         <button onClick={onBack} className="group flex items-center gap-2 text-slate-500 hover:text-blue-600 font-medium transition-colors">
           <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Projects
         </button>
-        <button onClick={() => setIsAddModalOpen(true)} className="bg-slate-900 hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-sm transition-all">+ New Task</button>
+        
+        <div className="flex gap-3">
+          {/* ADDED SORT BUTTON HERE */}
+          <button 
+            onClick={() => setIsSortedByPriority(!isSortedByPriority)} 
+            className={`px-4 py-2.5 rounded-xl font-bold transition-all border flex items-center gap-2 ${
+              isSortedByPriority 
+              ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' 
+              : 'bg-white border-slate-200 text-slate-600 hover:border-blue-400'
+            }`}
+          >
+            <span>{isSortedByPriority ? '🔼 Priority Sorted' : 'Sort by Priority'}</span>
+          </button>
+
+          <button onClick={() => setIsAddModalOpen(true)} className="bg-slate-900 hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-sm transition-all">+ New Task</button>
+        </div>
       </div>
 
       <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-200 mb-10 flex justify-between items-start">
@@ -224,6 +238,7 @@ const ProjectDetails = ({ project, onBack, currentUserId }) => {
                     <SubtaskList taskGuid={t.id} onSubtaskStatusChange={loadInitialData} />
                   </div>
                   <div className="flex-1 p-10 bg-white/40">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-6">Discussion Board</span>
                     <CommentSection taskGuid={t.id} taskName={t.title} currentUserId={currentUserId} projectId={project.id} />
                   </div>
                 </div>

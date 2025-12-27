@@ -17,13 +17,14 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId, availableMembers =
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Use the availableMembers prop instead of fetching all users
+  // Normalize project members
   const projectUsers = availableMembers.map(u => ({
     id: (u.id || u.userId).toString().toLowerCase(),
     username: u.username || u.userName,
     email: u.email
   }));
 
+  // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target)) {
@@ -86,10 +87,12 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId, availableMembers =
     }
   };
 
-  const filteredSuggestions = projectUsers.filter(u => 
-    !selectedUsers.some(sel => sel.id === u.id) &&
-    u.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter logic: Show all if no searchTerm, otherwise filter by username
+  const filteredSuggestions = projectUsers.filter(u => {
+    const isAlreadySelected = selectedUsers.some(sel => sel.id === u.id);
+    const matchesSearch = u.username.toLowerCase().includes(searchTerm.toLowerCase());
+    return !isAlreadySelected && matchesSearch;
+  });
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -114,7 +117,9 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId, availableMembers =
       </div>
 
       <div className="relative" ref={searchWrapperRef}>
-        <label className="block text-sm font-bold text-gray-700">Assign To (Project Members Only)</label>
+        <label className="block text-sm font-bold text-gray-700">Assign To (Project Members)</label>
+        
+        {/* Selected Users Tags */}
         <div className="flex flex-wrap gap-2 my-2">
           {selectedUsers.map(u => (
             <span key={u.id} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-bold flex items-center">
@@ -123,20 +128,39 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId, availableMembers =
             </span>
           ))}
         </div>
+
         <input 
-          type="text" value={searchTerm} 
+          type="text" 
+          value={searchTerm} 
           onFocus={() => setShowSuggestions(true)}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search team members..."
+          placeholder="Click to see members..."
           className="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
         />
-        {showSuggestions && searchTerm && (
-          <div className="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto">
-            {filteredSuggestions.map(u => (
-              <div key={u.id} onClick={() => selectUser(u)} className="p-2 hover:bg-blue-50 cursor-pointer text-sm border-b last:border-none">
-                {u.username} <span className="text-gray-400 text-xs">({u.email})</span>
+
+        {/* --- DROPDOWN LOGIC --- */}
+        {/* Removed "&& searchTerm" so it opens on click/focus even if empty */}
+        {showSuggestions && (
+          <div className="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+            {filteredSuggestions.length > 0 ? (
+              filteredSuggestions.map(u => (
+                <div 
+                  key={u.id} 
+                  onClick={() => selectUser(u)} 
+                  className="p-2 hover:bg-blue-50 cursor-pointer text-sm border-b last:border-none flex justify-between items-center"
+                >
+                  <div>
+                    <span className="font-medium text-gray-800">{u.username}</span>
+                    <p className="text-gray-400 text-xs">{u.email}</p>
+                  </div>
+                  <span className="text-blue-500 text-xs">Add +</span>
+                </div>
+              ))
+            ) : (
+              <div className="p-3 text-sm text-gray-500 text-center">
+                {searchTerm ? "No members found." : "No more members to assign."}
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
