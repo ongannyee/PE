@@ -43,14 +43,22 @@ function AnimatedProjectTableItem({
   project, 
   onDelete, 
   onClick, 
-  onEdit, // <--- 1. Accept the Edit function
+  onEdit, 
   onArchiveOrRestore, 
   index, 
   selectedIndex, 
-  onItemMouseEnter 
+  onItemMouseEnter,
+  currentUserId,
+  userRole 
 }) {
   const isArchived = Boolean(project.isArchived);
   const isSelected = selectedIndex === index;
+
+  // FIXED: Lowercase normalization for GUID comparison
+  const isOwner = currentUserId && project.createdByUserId && 
+                  currentUserId.toLowerCase() === project.createdByUserId.toLowerCase();
+  
+  const canManage = userRole === "Admin" || isOwner;
   
   const getStatus = () => {
     const now = new Date();
@@ -80,26 +88,23 @@ function AnimatedProjectTableItem({
         {project.projectId}
       </td>
       
-      {/* 2. Modified Project Name Column to include Edit Button */}
-      <td
-        className="py-3 px-4 font-medium"
-        style={{ width: "25%" }}
-      >
+      <td className="py-3 px-4 font-medium" style={{ width: "25%" }}>
         <div className="flex justify-between items-center group">
           <span className="text-blue-600 truncate mr-2" title={project.projectName}>
             {project.projectName}
           </span>
           
-          {/* THE EDIT BUTTON */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation(); // Stop row click
-              onEdit(project);     // Trigger Edit Modal
-            }}
-            className="text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 rounded hover:bg-blue-50 text-xs border border-transparent hover:border-blue-200"
-          >
-            Edit
-          </button>
+          {canManage && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(project);
+              }}
+              className="text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 rounded hover:bg-blue-50 text-xs border border-transparent hover:border-blue-200"
+            >
+              Edit
+            </button>
+          )}
         </div>
       </td>
 
@@ -110,43 +115,42 @@ function AnimatedProjectTableItem({
         {formatDate(project.endDate)}
       </td>
 
-      {/* Status */}
       <td className="py-3 px-4 text-center" style={{ width: "140px" }}>
-        <div
-          className={`inline-flex px-3 py-1 rounded-full text-white text-xs font-medium ${status.color}`}
-        >
+        <div className={`inline-flex px-3 py-1 rounded-full text-white text-xs font-medium ${status.color}`}>
           {status.text}
         </div>
       </td>
 
-      {/* Archive / Restore */}
       <td className="py-3 px-4 text-center" style={{ width: "100px" }}>
-        <button
-          className={`px-3 py-1.5 rounded-md text-white text-sm font-medium transition-colors ${
-            isArchived
-              ? "bg-green-600 hover:bg-green-700"
-              : "bg-yellow-500 hover:bg-yellow-600"
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onArchiveOrRestore(project.projectId);
-          }}
-        >
-          {isArchived ? "Restore" : "Archive"}
-        </button>
+        {canManage ? (
+          <button
+            className={`px-3 py-1.5 rounded-md text-white text-sm font-medium transition-colors ${
+              isArchived ? "bg-green-600 hover:bg-green-700" : "bg-yellow-500 hover:bg-yellow-600"
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onArchiveOrRestore(project.projectId);
+            }}
+          >
+            {isArchived ? "Restore" : "Archive"}
+          </button>
+        ) : (
+          <span className="text-gray-300 text-xs italic">View Only</span>
+        )}
       </td>
 
-      {/* Delete */}
       <td className="py-3 px-4 text-center" style={{ width: "100px" }}>
-        <button
-          className="px-3 py-1.5 rounded-md text-white text-sm font-medium bg-red-500 hover:bg-red-600 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(project.projectId);
-          }}
-        >
-          Delete
-        </button>
+        {canManage && (
+          <button
+            className="px-3 py-1.5 rounded-md text-white text-sm font-medium bg-red-500 hover:bg-red-600 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(project.projectId);
+            }}
+          >
+            Delete
+          </button>
+        )}
       </td>
     </AnimatedTableRow>
   );

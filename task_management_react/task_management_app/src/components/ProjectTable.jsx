@@ -1,9 +1,15 @@
-// src/components/ProjectTable.jsx
 import { useState, useCallback, useRef, useEffect } from "react";
 import AnimatedProjectTableItem from "./AnimatedProjectTableItem";
 
-// 1. Accept 'onEdit' here
-function ProjectTable({ projects = [], onDelete, onClick, onEdit, onArchiveOrRestore }) {
+function ProjectTable({ 
+  projects = [], 
+  onDelete, 
+  onClick, 
+  onEdit, 
+  onArchiveOrRestore, 
+  currentUserId,
+  userRole 
+}) {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [keyboardNav, setKeyboardNav] = useState(false);
   const tableRef = useRef(null);
@@ -22,7 +28,7 @@ function ProjectTable({ projects = [], onDelete, onClick, onEdit, onArchiveOrRes
     [onClick]
   );
 
-  // Keyboard navigation
+  // Keyboard navigation logic
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
@@ -73,7 +79,6 @@ function ProjectTable({ projects = [], onDelete, onClick, onEdit, onArchiveOrRes
   return (
     <div className="overflow-x-auto relative" ref={tableRef}>
       <div className="bg-white rounded-lg shadow-md p-4">
-        {/* Header Table */}
         <table className="w-full mb-3" style={{ tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: "80px" }} />
@@ -97,7 +102,6 @@ function ProjectTable({ projects = [], onDelete, onClick, onEdit, onArchiveOrRes
           </thead>
         </table>
         
-        {/* Rows Container */}
         <div className="space-y-2">
           {projects.length === 0 ? (
             <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
@@ -113,10 +117,10 @@ function ProjectTable({ projects = [], onDelete, onClick, onEdit, onArchiveOrRes
                 onItemMouseEnter={handleItemMouseEnter}
                 onDelete={onDelete}
                 onArchiveOrRestore={onArchiveOrRestore}
-                onClick={(project) => handleItemClick(project, index)}
-                
-                // 2. Pass it down to the child component
+                onClick={(p) => handleItemClick(p, index)}
                 onEdit={onEdit} 
+                currentUserId={currentUserId}
+                userRole={userRole}
               />
             ))
           )}

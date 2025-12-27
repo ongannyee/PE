@@ -36,7 +36,6 @@ namespace TaskManagement.API.Controllers
             return Ok(tasksDTO);
         }
 
-        // Changed from {taskId:int} to {id:guid} to match your PK strategy
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetTaskById(Guid id)
         {
@@ -75,7 +74,6 @@ namespace TaskManagement.API.Controllers
             return Ok(task);
         }
 
-        // Updated to use Guid PK
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> UpdateTask(Guid id, [FromBody] UpdateTaskRequestDTO updateDto)
         {
@@ -83,12 +81,11 @@ namespace TaskManagement.API.Controllers
             if (task == null) return NotFound();
 
             var newStatus = (Models.Domain.TaskStatus)updateDto.Status;
-            // If moving TO Done
+            
             if (newStatus == Models.Domain.TaskStatus.Done && task.Status != Models.Domain.TaskStatus.Done)
             {
                 task.CompletedAt = DateTime.UtcNow;
             }
-            // If moving FROM Done back to ToDo/InProgress
             else if (newStatus != Models.Domain.TaskStatus.Done && task.Status == Models.Domain.TaskStatus.Done)
             {
                 task.CompletedAt = null;
@@ -111,7 +108,6 @@ namespace TaskManagement.API.Controllers
             });
         }
 
-        // Updated to use Guid PK
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> DeleteTask(Guid id)
         {
@@ -127,7 +123,6 @@ namespace TaskManagement.API.Controllers
         // SUBTASK & ASSIGNMENT OPERATIONS
         // ==========================================
 
-        // This is the endpoint you were testing in Postman
         [HttpGet("{taskId:guid}/subtasks")]
         public async Task<IActionResult> GetSubTasksByTaskId(Guid taskId)
         {
@@ -189,7 +184,8 @@ namespace TaskManagement.API.Controllers
                     Id = ta.User.Id, 
                     UserId = ta.User.UserId, 
                     Username = ta.User.Username, 
-                    Email = ta.User.Email 
+                    Email = ta.User.Email,
+                    Role = ta.User.Role // FIXED: Added Role to resolve CS9035
                 })
                 .ToListAsync();
 

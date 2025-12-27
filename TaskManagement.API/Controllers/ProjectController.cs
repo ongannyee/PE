@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TaskManagement.API.Data;
 using TaskManagement.API.Models.Domain;
 using TaskManagement.API.Models.DTO;
@@ -15,37 +15,13 @@ namespace TaskManagement.API.Controllers
         private readonly ProjectDBContext _context = dBContext;
 
         [HttpGet]
-        public IActionResult GetAllBProjects()
+        public async Task<IActionResult> GetAllBProjects()
         {
-            var projects = _context.Projects.ToList();
-            var ProjectsDTO = new List<ProjectDTO>();
-            foreach (var project in projects)
-            {
-                ProjectsDTO.Add (new ProjectDTO
-                {
-                    Id = project.Id,
-                    ProjectId = project.ProjectId,
-                    ProjectName = project.ProjectName,
-                    ProjectGoal = project.ProjectGoal,
-                    StartDate = project.StartDate,
-                    EndDate = project.EndDate,
-                    IsArchived = project.IsArchived
-
-                });
-            }
-            return Ok(ProjectsDTO);
-        }
-        [HttpGet]
-        [Route("{projectId:int}")]
-        public IActionResult GetProjectById([FromRoute] int projectId)
-        {
-            var project = _context.Projects.FirstOrDefault(p => p.ProjectId == projectId);
-
-            if (project == null)
-            {
-                return NotFound();
-            }
-            var ProjectDTO = new ProjectDTO
+            var projects = await _context.Projects
+                .Include(p => p.Creator)
+                .ToListAsync();
+            
+            var projectsDTO = projects.Select(project => new ProjectDTO
             {
                 Id = project.Id,
                 ProjectId = project.ProjectId,
@@ -53,17 +29,45 @@ namespace TaskManagement.API.Controllers
                 ProjectGoal = project.ProjectGoal,
                 StartDate = project.StartDate,
                 EndDate = project.EndDate,
-                IsArchived = project.IsArchived
-            };
-            return Ok(ProjectDTO);
+                IsArchived = project.IsArchived,
+                CreatedByUserId = project.CreatedByUserId,
+                CreatorName = project.Creator?.Username
+            }).ToList();
+
+            return Ok(projectsDTO);
         }
-        [HttpPost]
-        public IActionResult AddProject([FromBody] CreateProjectRequestDTO createProjectRequestDTO)
+
+        [HttpGet]
+        [Route("{projectId:int}")]
+        public async Task<IActionResult> GetProjectById([FromRoute] int projectId)
         {
-            if (createProjectRequestDTO == null)
+            var project = await _context.Projects
+                .Include(p => p.Creator)
+                .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+
+            if (project == null) return NotFound();
+
+            var projectDTO = new ProjectDTO
             {
-                return BadRequest("Project data is null.");
-            }
+                Id = project.Id,
+                ProjectId = project.ProjectId,
+                ProjectName = project.ProjectName,
+                ProjectGoal = project.ProjectGoal,
+                StartDate = project.StartDate,
+                EndDate = project.EndDate,
+                IsArchived = project.IsArchived,
+                CreatedByUserId = project.CreatedByUserId,
+                CreatorName = project.Creator?.Username
+            };
+
+            return Ok(projectDTO);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddProject([FromBody] CreateProjectRequestDTO createProjectRequestDTO)
+        {
+            if (createProjectRequestDTO == null) return BadRequest("Project data is null.");
+
             var project = new Project
             {
                 Id = Guid.NewGuid(),
@@ -72,117 +76,136 @@ namespace TaskManagement.API.Controllers
                 ProjectGoal = createProjectRequestDTO.ProjectGoal,
                 StartDate = createProjectRequestDTO.StartDate,
                 EndDate = createProjectRequestDTO.EndDate,
-                IsArchived = createProjectRequestDTO.IsArchived
+                IsArchived = createProjectRequestDTO.IsArchived,
+                CreatedByUserId = createProjectRequestDTO.CreatedByUserId 
             };
-            _context.Projects.Add(project);
-            _context.SaveChanges();
-            return CreatedAtAction(nameof(GetProjectById),new {ProjectId = project.ProjectId},project);
-   
+
+            var projectMember = new ProjectMember
+            {
+                ProjectId = project.Id,
+                UserId = createProjectRequestDTO.CreatedByUserId,
+                ProjectRole = "PM" 
+            };
+
+            await _context.Projects.AddAsync(project);
+            await _context.ProjectMembers.AddAsync(projectMember);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetProjectById), new { projectId = project.ProjectId }, project);
         }
+
         [HttpPut]
         [Route("{projectId:int}")]
-        public IActionResult UpdateProjectById([FromRoute] int projectId,[FromBody] UpdateProjectRequestDTO updateProjectRequestDTO)
+        public async Task<IActionResult> UpdateProjectById([FromRoute] int projectId, [FromBody] UpdateProjectRequestDTO updateProjectRequestDTO, [FromQuery] Guid currentUserId, [FromQuery] string userRole)
         {
-            var project = _context.Projects.FirstOrDefault(p => p.ProjectId == projectId);
-            if(project == null)
-            {
-                return NotFound();
+            var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == projectId);
+            if (project == null) return NotFound();
 
+            // RBAC Check: Admin OR Creator
+            if (userRole != "Admin" && project.CreatedByUserId != currentUserId)
+            {
+                return Forbid("You do not have permission to edit this project.");
             }
+
             project.ProjectName = updateProjectRequestDTO.ProjectName;
             project.ProjectGoal = updateProjectRequestDTO.ProjectGoal;
             project.StartDate = updateProjectRequestDTO.StartDate;
             project.EndDate = updateProjectRequestDTO.EndDate;
             project.IsArchived = updateProjectRequestDTO.IsArchived;
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
             return Ok(project);
         }
+
         [HttpDelete]
         [Route("{projectId:int}")]
-        public IActionResult DeleteProjectById([FromRoute] int projectId)
+        public async Task<IActionResult> DeleteProjectById([FromRoute] int projectId, [FromQuery] Guid currentUserId, [FromQuery] string userRole)
         {
-            var project = _context.Projects.FirstOrDefault(p => p.ProjectId == projectId);
-            if(project == null)
+            var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == projectId);
+            if (project == null) return NotFound();
+
+            // RBAC Check: Admin OR Creator
+            if (userRole != "Admin" && project.CreatedByUserId != currentUserId)
             {
-                return NotFound();
+                return Forbid("You do not have permission to delete this project.");
             }
+
             _context.Projects.Remove(project);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
         [HttpPut]
         [Route("{projectId:int}/archive")]
-        public IActionResult ArchiveProject([FromRoute] int projectId)
+        public async Task<IActionResult> ArchiveProject([FromRoute] int projectId, [FromQuery] Guid currentUserId, [FromQuery] string userRole)
         {
-            var project = _context.Projects.FirstOrDefault(p => p.ProjectId == projectId);
-            if (project == null)
+            var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == projectId);
+            if (project == null) return NotFound();
+
+            // RBAC Check: Admin OR Creator
+            if (userRole != "Admin" && project.CreatedByUserId != currentUserId)
             {
-                return NotFound();
+                return Forbid("You do not have permission to archive this project.");
             }
 
-            project.IsArchived = true;
-            _context.SaveChanges();
+            project.IsArchived = !project.IsArchived; // Toggle
+            await _context.SaveChangesAsync();
 
-            return Ok(new { Message = "Project archived successfully", ProjectId = project.ProjectId });
+            return Ok(new { Message = "Project status updated successfully", ProjectId = project.ProjectId, IsArchived = project.IsArchived });
         }
-        
+
         // --- ASSOCIATION & RELATIONSHIP METHODS ---
 
-        // 1. Assign User to Project
         [HttpPost("AssignUser")]
-        public IActionResult AssignUserToProject([FromBody] ProjectMemberDTO dto)
+        public async Task<IActionResult> AssignUserToProject([FromBody] ProjectMemberDTO dto)
         {
             var projectMember = new ProjectMember
             {
                 ProjectId = dto.ProjectId,
                 UserId = dto.UserId,
-                //JoinedAt = DateTime.UtcNow
+                ProjectRole = dto.ProjectRole ?? "Contributor"
             };
 
-            _context.ProjectMembers.Add(projectMember);
-            _context.SaveChanges();
+            await _context.ProjectMembers.AddAsync(projectMember);
+            await _context.SaveChangesAsync();
             return Ok(new { Message = "User assigned to project successfully." });
         }
 
-        // 2. Remove User from Project
         [HttpDelete("RemoveUser")]
-        public IActionResult RemoveUserFromProject([FromBody] ProjectMemberDTO dto)
+        public async Task<IActionResult> RemoveUserFromProject([FromBody] ProjectMemberDTO dto)
         {
-            var member = _context.ProjectMembers
-                .FirstOrDefault(pm => pm.ProjectId == dto.ProjectId && pm.UserId == dto.UserId);
-            
+            var member = await _context.ProjectMembers
+                .FirstOrDefaultAsync(pm => pm.ProjectId == dto.ProjectId && pm.UserId == dto.UserId);
+
             if (member == null) return NotFound("User is not a member of this project.");
 
             _context.ProjectMembers.Remove(member);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return Ok(new { Message = "User removed from project." });
         }
 
-        // 3. Get all Members (Users) of a Project
         [HttpGet("{projectId:guid}/members")]
-        public IActionResult GetProjectMembers(Guid projectId)
+        public async Task<IActionResult> GetProjectMembers(Guid projectId)
         {
-            var members = _context.ProjectMembers
+            var members = await _context.ProjectMembers
                 .Where(pm => pm.ProjectId == projectId)
                 .Include(pm => pm.User)
-                .Select(pm => new UserDTO
+                .Select(pm => new ProjectMemberDTO 
                 {
-                    Id = pm.User.Id,
-                    UserId = pm.User.UserId,
+                    UserId = pm.UserId,
+                    ProjectId = pm.ProjectId,
                     Username = pm.User.Username,
-                    Email = pm.User.Email
+                    ProjectRole = pm.ProjectRole
                 })
-                .ToList();
+                .ToListAsync();
 
             return Ok(members);
         }
 
-        // 4. Get all Tasks belonging to a Project
         [HttpGet("{projectId:guid}/tasks")]
         public async Task<IActionResult> GetProjectTasks(Guid projectId)
         {
-            var tasks = _context.Tasks
+            var tasks = await _context.Tasks
                 .Where(t => t.ProjectId == projectId)
                 .Select(t => new TaskItemDTO
                 {
@@ -197,7 +220,7 @@ namespace TaskManagement.API.Controllers
                     CreatedAt = t.CreatedAt,
                     CompletedAt = t.CompletedAt
                 })
-                .ToList();
+                .ToListAsync();
 
             return Ok(tasks);
         }

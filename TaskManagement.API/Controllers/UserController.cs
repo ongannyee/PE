@@ -16,72 +16,93 @@ namespace TaskManagement.API.Controllers
         // --- STANDARD CRUD ---
 
         [HttpGet]
-        public IActionResult GetAllUsers()
+        public async Task<IActionResult> GetAllUsers()
         {
-            var users = _context.Users.ToList();
+            var users = await _context.Users.ToListAsync();
             var usersDTO = users.Select(u => new UserDTO 
             { 
                 Id = u.Id, 
                 UserId = u.UserId, 
                 Username = u.Username, 
-                Email = u.Email 
+                Email = u.Email,
+                Role = u.Role // Include Role
             }).ToList();
             return Ok(usersDTO);
         }
 
         [HttpGet("{userId:int}")]
-        public IActionResult GetUserById(int userId)
+        public async Task<IActionResult> GetUserById(int userId)
         {
-            var user = _context.Users.FirstOrDefault(u => u.UserId == userId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null) return NotFound();
-            return Ok(new UserDTO { Id = user.Id, UserId = user.UserId, Username = user.Username, Email = user.Email });
+            
+            return Ok(new UserDTO 
+            { 
+                Id = user.Id, 
+                UserId = user.UserId, 
+                Username = user.Username, 
+                Email = user.Email,
+                Role = user.Role // Include Role
+            });
         }
 
         [HttpPost]
-        public IActionResult AddUser([FromBody] RegisterUserRequestDTO registerRequestDTO)
+        public async Task<IActionResult> AddUser([FromBody] Models.DTOs.RegisterUserRequestDTO registerRequestDTO)
         {
             var user = new User { 
                 Id = Guid.NewGuid(), 
                 Username = registerRequestDTO.Username, 
                 Email = registerRequestDTO.Email, 
                 PasswordHash = registerRequestDTO.Password, 
+                Role = "User", // All new registrations are default Users
                 CreatedAt = DateTime.UtcNow 
             };
-            _context.Users.Add(user);
-            _context.SaveChanges();
+            
+            await _context.Users.AddAsync(user);
+            await _context.SaveChangesAsync();
+            
             return CreatedAtAction(nameof(GetUserById), new { userId = user.UserId }, user);
         }
 
         [HttpPut("{userId:int}")]
-        public IActionResult UpdateUser(int userId, [FromBody] UpdateUserRequestDTO updateDto)
+        public async Task<IActionResult> UpdateUser(int userId, [FromBody] UpdateUserRequestDTO updateDto)
         {
-            var user = _context.Users.FirstOrDefault(u => u.UserId == userId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null) return NotFound();
+            
             user.Username = updateDto.Username;
             user.Email = updateDto.Email;
-            _context.SaveChanges();
+            
+            // Note: We generally don't let users update their own Role via a standard UpdateProfile DTO
+            
+            await _context.SaveChangesAsync();
             return Ok(user);
         }
 
         [HttpDelete("{userId:int}")]
-        public IActionResult DeleteUser(int userId)
+        public async Task<IActionResult> DeleteUser(int userId)
         {
-            var user = _context.Users.FirstOrDefault(u => u.UserId == userId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null) return NotFound();
+            
             _context.Users.Remove(user);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
         // --- RELATIONSHIP RETRIEVAL METHODS ---
 
-        // 1. Get all Projects a User is a member of
         [HttpGet("{userId:guid}/projects")]
-        public IActionResult GetUserProjects(Guid userId)
+        public async Task<IActionResult> GetUserProjects(Guid userId)
         {
-            var projects = _context.ProjectMembers
+            // Logic: If user is Admin, they might want to see ALL projects.
+            // However, this specific endpoint is usually for "My Projects".
+            // We can add a check here if needed, but for now, we keep it to membership.
+            
+            var projects = await _context.ProjectMembers
                 .Where(pm => pm.UserId == userId)
                 .Include(pm => pm.Project)
+                .ThenInclude(p => p.Creator) 
                 .Select(pm => new ProjectDTO
                 {
                     Id = pm.Project.Id,
@@ -90,22 +111,24 @@ namespace TaskManagement.API.Controllers
                     ProjectGoal = pm.Project.ProjectGoal,
                     StartDate = pm.Project.StartDate,
                     EndDate = pm.Project.EndDate,
-                    IsArchived = pm.Project.IsArchived
+                    IsArchived = pm.Project.IsArchived,
+                    CreatedByUserId = pm.Project.CreatedByUserId,
+                    CreatorName = pm.Project.Creator.Username
                 })
-                .ToList();
+                .ToListAsync();
 
             return Ok(projects);
         }
 
-        // 2. Get all Tasks assigned to a User
         [HttpGet("{userId:guid}/tasks")]
-        public IActionResult GetUserTasks(Guid userId)
+        public async Task<IActionResult> GetUserTasks(Guid userId)
         {
-            var tasks = _context.TaskAssignments
+            var tasks = await _context.TaskAssignments
                 .Where(ta => ta.UserId == userId)
                 .Include(ta => ta.TaskItem)
                 .Select(ta => new TaskItemDTO
                 {
+                    Id = ta.TaskItem.Id,
                     TaskId = ta.TaskItem.TaskId,
                     Title = ta.TaskItem.Title,
                     Description = ta.TaskItem.Description,
@@ -114,16 +137,15 @@ namespace TaskManagement.API.Controllers
                     DueDate = ta.TaskItem.DueDate,
                     ProjectId = ta.TaskItem.ProjectId
                 })
-                .ToList();
+                .ToListAsync();
 
             return Ok(tasks);
         }
 
-        // 3. Get all Subtasks assigned to a User
         [HttpGet("{userId:guid}/subtasks")]
-        public IActionResult GetUserSubTasks(Guid userId)
+        public async Task<IActionResult> GetUserSubTasks(Guid userId)
         {
-            var subtasks = _context.SubTaskAssignments
+            var subtasks = await _context.SubTaskAssignments
                 .Where(sa => sa.UserId == userId)
                 .Include(sa => sa.SubTask)
                 .Select(sa => new SubTaskDTO
@@ -132,7 +154,7 @@ namespace TaskManagement.API.Controllers
                     Title = sa.SubTask.Title,
                     IsCompleted = sa.SubTask.IsCompleted
                 })
-                .ToList();
+                .ToListAsync();
 
             return Ok(subtasks);
         }
