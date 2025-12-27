@@ -9,22 +9,17 @@ export const registerUser = async (userData) => {
     return response.data;
 };
 
-// --- FIX: Restore the working Login function ---
 export const loginUser = async (user) => {
-  // 1. Correct URL (api/User/login, NOT api/Auth/login)
-  const response = await fetch(`http://localhost:5017/api/User/login`, {
+  // MUST match the controller route: api/Auth/login
+  const response = await fetch(`http://localhost:5017/api/Auth/login`, { 
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(user),
   });
 
   if (!response.ok) {
     throw new Error(`Login failed: ${response.statusText}`);
   }
-
-  // 2. Return FULL object (contains Token + User)
   return await response.json(); 
 };
 // ------------------------------------------------
