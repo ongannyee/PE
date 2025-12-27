@@ -12,8 +12,8 @@ using TaskManagement.API.Data;
 namespace TaskManagement.API.Migrations
 {
     [DbContext(typeof(ProjectDBContext))]
-    [Migration("20251227120920_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20251227145827_loginrelated")]
+    partial class loginrelated
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
