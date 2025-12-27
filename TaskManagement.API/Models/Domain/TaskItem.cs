@@ -32,6 +32,7 @@ namespace TaskManagement.API.Models.Domain
         
         public DateTime? DueDate { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? CompletedAt { get; set; }
 
         // Foreign Key to Project
         public Guid ProjectId { get; set; }

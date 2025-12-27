@@ -68,3 +68,19 @@ export const fetchUserSubTasks = async (userGuid) => {
     const response = await axios.get(`${API_URL}/${userGuid}/subtasks`);
     return response.data;
 };
+
+export const fetchProjectTasks = async (projectId) => {
+  // This uses the relative path, so it automatically uses the correct port defined in your axios config
+  const response = await fetch(`http://localhost:5017/api/Project/${projectId}/tasks`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch tasks for project ${projectId}`);
+  }
+
+  return await response.json();
+};

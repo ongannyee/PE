@@ -6,7 +6,8 @@ const UserTasks = ({ currentUserId, projects, onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  const [isPrioritySort, setIsPrioritySort] = useState(false); 
+  // --- UPDATED: State handles 3 modes ('date', 'priority', 'status') ---
+  const [sortMode, setSortMode] = useState('date'); 
 
   useEffect(() => {
     const loadTasks = async () => {
@@ -24,53 +25,63 @@ const UserTasks = ({ currentUserId, projects, onNavigate }) => {
     loadTasks();
   }, [currentUserId]);
 
-  // --- UPDATED: Robust Sorting Logic ---
+  // --- UPDATED: 3-Way Sorting Logic ---
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
       
-      // 1. HELPER: Map Priority Strings to Numbers
+      // 1. HELPER: Priority Value (Higher = More Urgent)
       const getPrioValue = (p) => {
         const s = String(p || "").toLowerCase();
         if (s === 'urgent' || s === '3') return 3;
         if (s === 'high' || s === '2') return 2;
         if (s === 'medium' || s === '1') return 1;
-        return 0; // Low or default
+        return 0; 
       };
 
-      const prioA = getPrioValue(a.priority);
-      const prioB = getPrioValue(b.priority);
+      // 2. HELPER: Status Value (To Do -> In Prog -> Done)
+      const getStatusValue = (s) => {
+        const status = String(s || "").toLowerCase();
+        // We want ToDo (0) first, then InProgress (1), then Done (2)
+        if (status === 'todo' || status === '0') return 0;
+        if (status === 'inprogress' || status === 'in progress' || status === '1') return 1;
+        if (status === 'done' || status === 'completed' || status === '2') return 2;
+        return 99; // Unknown statuses go last
+      };
 
-      // 2. HELPER: Parse Dates
+      // 3. HELPER: Date Value
       const dateA = a.dueDate || a.DueDate ? new Date(a.dueDate || a.DueDate) : null;
       const dateB = b.dueDate || b.DueDate ? new Date(b.dueDate || b.DueDate) : null;
 
       const compareDates = () => {
         if (!dateA && !dateB) return 0;
-        if (!dateA) return 1;  // No date = Bottom
-        if (!dateB) return -1; // No date = Bottom
-        return dateA - dateB;  // Ascending (Earliest -> Latest)
+        if (!dateA) return 1;  
+        if (!dateB) return -1; 
+        return dateA - dateB;  
       };
 
-      const comparePriorities = () => {
-        // Descending: 3 (Urgent) -> 0 (Low)
-        return prioB - prioA; 
-      };
-
-      // 3. EXECUTE SORT
-      if (isPrioritySort) {
-        // Priority First
-        const priorityDiff = comparePriorities();
-        if (priorityDiff !== 0) return priorityDiff;
+      // 4. EXECUTE SORT BASED ON MODE
+      if (sortMode === 'priority') {
+        // Primary: Priority (Desc), Secondary: Date
+        const diff = getPrioValue(b.priority) - getPrioValue(a.priority);
+        if (diff !== 0) return diff;
         return compareDates();
-      } else {
-        // Date First
-        const dateDiff = compareDates();
-        if (dateDiff !== 0) return dateDiff;
-        return comparePriorities();
+      } 
+      else if (sortMode === 'status') {
+        // Primary: Status (Asc: ToDo->Done), Secondary: Date
+        const diff = getStatusValue(a.status) - getStatusValue(b.status);
+        if (diff !== 0) return diff;
+        return compareDates();
+      } 
+      else {
+        // Default: Date (Asc), Secondary: Priority
+        const diff = compareDates();
+        if (diff !== 0) return diff;
+        return getPrioValue(b.priority) - getPrioValue(a.priority);
       }
     });
-  }, [tasks, isPrioritySort]);
+  }, [tasks, sortMode]);
 
+  // ... (Keep getProjectName, getStatusColor, getPriorityColor, getDueDateStyles exactly the same) ...
   const getProjectName = (projectId) => {
     if (!projects || projects.length === 0) return `Project #${projectId}`;
     const proj = projects.find(p => p.id === projectId || p.projectId === projectId);
@@ -114,19 +125,26 @@ const UserTasks = ({ currentUserId, projects, onNavigate }) => {
             <p className="text-gray-500 mt-1">All tasks assigned to you.</p>
         </div>
         
+        {/* --- UPDATED: 3 Buttons for Sorting --- */}
         <div className="flex items-center gap-4">
             <div className="bg-gray-100 p-1 rounded-lg flex text-sm font-medium">
                 <button 
-                    onClick={() => setIsPrioritySort(false)}
-                    className={`px-3 py-1.5 rounded-md transition-all ${!isPrioritySort ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    onClick={() => setSortMode('date')}
+                    className={`px-3 py-1.5 rounded-md transition-all ${sortMode === 'date' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
-                    By Date
+                    Date
                 </button>
                 <button 
-                    onClick={() => setIsPrioritySort(true)}
-                    className={`px-3 py-1.5 rounded-md transition-all ${isPrioritySort ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    onClick={() => setSortMode('priority')}
+                    className={`px-3 py-1.5 rounded-md transition-all ${sortMode === 'priority' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
-                    By Priority
+                    Priority
+                </button>
+                <button 
+                    onClick={() => setSortMode('status')}
+                    className={`px-3 py-1.5 rounded-md transition-all ${sortMode === 'status' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                    Status
                 </button>
             </div>
             <div className="text-sm text-gray-400 border-l pl-4">
