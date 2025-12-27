@@ -2,88 +2,65 @@ using Microsoft.AspNetCore.Mvc;
 using TaskManagement.API.Data;
 using TaskManagement.API.Models.Domain;
 using TaskManagement.API.Models.DTO;
-using System.Security.Claims;               // REQUIRED FOR JWT
-using Microsoft.IdentityModel.Tokens;       // REQUIRED FOR JWT
-using System.IdentityModel.Tokens.Jwt;      // REQUIRED FOR JWT
-using System.Text;                          // REQUIRED FOR JWT
 
 namespace TaskManagement.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController(ProjectDBContext context, IConfiguration configuration) : ControllerBase
+    public class AuthController(ProjectDBContext context) : ControllerBase
     {
         private readonly ProjectDBContext _context = context;
-        private readonly IConfiguration _configuration = configuration;
 
-        [HttpPost("register")]
-        public IActionResult Register([FromBody] RegisterRequestDTO request)
+    [HttpPost("register")]
+    public IActionResult Register([FromBody] RegisterRequestDTO request)
+    {
+        // 1. Check if user already exists
+        if (_context.Users.Any(u => u.Email == request.Email))
         {
-            if (_context.Users.Any(u => u.Email == request.Email))
-            {
-                return BadRequest(new { Message = "Email already exists." });
-            }
-
-            var user = new User
-            {
-                Id = Guid.NewGuid(),
-                Username = request.Username,
-                Email = request.Email,
-                PasswordHash = request.Password, 
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.Users.Add(user);
-            _context.SaveChanges();
-
-            return Ok(new { Message = "User registered successfully!" });
+            // OLD: return BadRequest("Email already exists.");  <-- This caused the crash
+            // NEW: Return JSON object
+            return BadRequest(new { Message = "Email already exists." });
         }
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = request.Username,
+            Email = request.Email,
+            PasswordHash = request.Password, 
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Users.Add(user);
+        _context.SaveChanges();
+
+        return Ok(new { Message = "User registered successfully!" });
+    }
 
         // POST: api/Auth/login
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequestDTO request)
         {
-            // 1. Find user
+            // 1. Find user by email
             var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
 
-            if (user == null || user.PasswordHash != request.Password)
+            if (user == null)
             {
-                return Unauthorized("Invalid email or password.");
+                return Unauthorized("Invalid email.");
             }
 
-            // --- 2. GENERATE TOKEN (The part that was missing) ---
-            var claims = new List<Claim>
+            // 2. Check password (Simple string comparison for now)
+            if (user.PasswordHash != request.Password)
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim("UserId", user.UserId.ToString()), 
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Email, user.Email)
-            };
+                return Unauthorized("Invalid password.");
+            }
 
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var token = new JwtSecurityToken(
-                issuer: jwtSettings["Issuer"],
-                audience: jwtSettings["Audience"],
-                claims: claims,
-                expires: DateTime.Now.AddDays(1),
-                signingCredentials: creds
-            );
-
-            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-
-            // 3. Return Token + User
+            // 3. Login Success! Return the User Info (ID is crucial here)
             return Ok(new 
             { 
-                Token = tokenString, 
-                User = new 
-                { 
-                    Id = user.Id, 
-                    Username = user.Username, 
-                    Email = user.Email 
-                } 
+                Id = user.Id, 
+                Username = user.Username, 
+                Email = user.Email 
             });
         }
     }
