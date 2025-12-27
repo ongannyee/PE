@@ -2,24 +2,41 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using TaskManagement.API.Data;
 using System.IO;
+using Microsoft.AspNetCore.Authentication.JwtBearer; // <--- NEW IMPORT
+using Microsoft.IdentityModel.Tokens;               // <--- NEW IMPORT
+using System.Text;                                  // <--- NEW IMPORT
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowReactApp",
-        builder =>
-        {
-            builder.WithOrigins("http://localhost:5173")
-                   .AllowAnyHeader()
-                   .AllowAnyMethod();
-        });
-});
+// ... (Your CORS setup remains here) ...
+builder.Services.AddCors(options => { /* ... */ });
 
-// Add services to the container.
-builder.Services.AddControllers()
-    .AddNewtonsoftJson(options =>
+// 1. ADD JWT AUTHENTICATION SERVICE
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]!);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(key)
+    };
+});
+// ------------------------------------
+
+builder.Services.AddControllers()
+    .AddNewtonsoftJson(options => {
         options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
     });
 
@@ -29,44 +46,25 @@ builder.Services.AddDbContext<ProjectDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ProjectConnection"))
 );
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll",
-        policy => policy.AllowAnyOrigin()
-                        .AllowAnyMethod()
-                        .AllowAnyHeader()
-    );
-});
+// ... (Your second CORS setup) ...
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-// Ensure the Uploads folder exists physically
-var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "Uploads");
-if (!Directory.Exists(uploadsPath))
-{
-    Directory.CreateDirectory(uploadsPath);
-}
+// ... (Static Files config) ...
 
 app.UseHttpsRedirection();
+app.UseStaticFiles(/*...*/);
 
-// --- STATIC FILES CONFIG ---
-// This allows React to access http://localhost:5017/Uploads/filename.jpg
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = "/Uploads"
-});
+app.UseCors("AllowAll"); // Simplified to use one policy for now
 
-app.UseCors("AllowReactApp");
-app.UseCors("AllowAll");
+// 2. ENABLE AUTHENTICATION (Must be before Authorization)
+app.UseAuthentication(); 
 app.UseAuthorization();
 
 app.MapControllers();
-
 app.Run();

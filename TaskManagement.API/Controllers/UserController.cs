@@ -4,14 +4,19 @@ using TaskManagement.API.Data;
 using TaskManagement.API.Models.Domain;
 using TaskManagement.API.Models.DTO;
 using TaskManagement.API.Models.DTOs;
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 
 namespace TaskManagement.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController(ProjectDBContext dBContext) : ControllerBase
+    public class UserController(ProjectDBContext dBContext, IConfiguration configuration) : ControllerBase
     {
         private readonly ProjectDBContext _context = dBContext;
+        private readonly IConfiguration _configuration = configuration;
 
         // --- STANDARD CRUD ---
 
@@ -27,6 +32,53 @@ namespace TaskManagement.API.Controllers
                 Email = u.Email 
             }).ToList();
             return Ok(usersDTO);
+        }
+
+        [HttpPost("login")]
+        public IActionResult Login([FromBody] LoginRequestDTO loginRequest)
+        {
+            // 1. Validate User
+            var user = _context.Users.FirstOrDefault(u => u.Email == loginRequest.Email);
+            
+            // NOTE: In production, use BCrypt/Hashing. Here we compare plain text for simplicity.
+            if (user == null || user.PasswordHash != loginRequest.Password) 
+            {
+                return Unauthorized("Invalid email or password.");
+            }
+
+            // 2. Create Claims (The data inside the token)
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim("UserId", user.UserId.ToString()), // Custom claim for Int ID
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Email, user.Email)
+            };// 3. Generate the Token
+            var jwtSettings = _configuration.GetSection("JwtSettings");
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: jwtSettings["Issuer"],
+                audience: jwtSettings["Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddDays(1), // Token lasts 1 day
+                signingCredentials: creds
+            );
+
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
+            // 4. Return Token + User Info
+            return Ok(new 
+            { 
+                Token = tokenString, 
+                User = new UserDTO 
+                { 
+                    Id = user.Id, 
+                    UserId = user.UserId, 
+                    Username = user.Username, 
+                    Email = user.Email 
+                } });
         }
 
         [HttpGet("{userId:int}")]
