@@ -81,9 +81,6 @@ namespace TaskManagement.API.Migrations
                     b.Property<Guid>("TaskId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("TaskItemId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -96,7 +93,7 @@ namespace TaskManagement.API.Migrations
                     b.HasIndex("CommentId")
                         .IsUnique();
 
-                    b.HasIndex("TaskItemId");
+                    b.HasIndex("TaskId");
 
                     b.HasIndex("UserId");
 
@@ -324,14 +321,14 @@ namespace TaskManagement.API.Migrations
                 {
                     b.HasOne("TaskManagement.API.Models.Domain.TaskItem", "TaskItem")
                         .WithMany("Comments")
-                        .HasForeignKey("TaskItemId")
+                        .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("TaskManagement.API.Models.Domain.User", "User")
                         .WithMany("Comments")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("TaskItem");

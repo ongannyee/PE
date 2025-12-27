@@ -137,7 +137,7 @@ const ProjectDetails = ({ project, onBack, currentUserId }) => {
         {displayedTasks.length > 0 ? (
           displayedTasks.map(t => (
             <div 
-              key={t.id} // Changed from t.taskId to Guid t.id
+              key={t.id} 
               className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden ${
                 expandedTaskId === t.id 
                 ? 'ring-4 ring-blue-500/10 shadow-xl border-blue-200' 
@@ -190,7 +190,7 @@ const ProjectDetails = ({ project, onBack, currentUserId }) => {
                   </button>
 
                   <button 
-                    onClick={(e) => handleDelete(e, t.id)} // Changed to t.id
+                    onClick={(e) => handleDelete(e, t.id)} 
                     className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-90"
                   >
                     <span className="text-xl">🗑️</span>
@@ -220,10 +220,16 @@ const ProjectDetails = ({ project, onBack, currentUserId }) => {
                   <div className="flex-1 p-10 bg-white/40">
                     <div className="flex items-center gap-3 mb-8">
                       <div className="bg-emerald-500 p-2 rounded-lg shadow-emerald-200 shadow-lg font-black text-white text-xs">02</div>
-                      <h5 className="font-black text-slate-800 uppercase tracking-widest text-xs">Activity Feed</h5>
+                      <h5 className="font-black text-slate-800 uppercase tracking-widest text-xs">Comments</h5>
                     </div>
-                    <div className="h-full">
-                      <CommentSection taskGuid={t.id} currentUserId={currentUserId} />
+                    <div className="h-full pb-10">
+                      {/* FIXED: Passing t.title as taskName here */}
+                      <CommentSection 
+                        taskGuid={t.id} 
+                        taskName={t.title} 
+                        currentUserId={currentUserId} 
+                        projectId={project.id}
+                      />
                     </div>
                   </div>
                 </div>

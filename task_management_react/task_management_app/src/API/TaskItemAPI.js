@@ -68,8 +68,8 @@ export const fetchTaskMembers = async (taskGuid) => {
     return response.data;
 };
 
-// 11. GET Task Comments (Requires GUID)
-export const fetchTaskComments = async (taskGuid) => {
-    const response = await axios.get(`${API_URL}/${taskGuid}/comments`);
-    return response.data;
-};
+// // 11. GET Task Comments (Requires GUID)
+// export const fetchTaskComments = async (taskGuid) => {
+//     const response = await axios.get(`${API_URL}/${taskGuid}/comments`);
+//     return response.data;
+// };
