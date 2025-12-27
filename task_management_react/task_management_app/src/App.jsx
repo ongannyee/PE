@@ -6,34 +6,28 @@ import ProjectPage from "./components/ProjectPage";
 import AddProjectPage from "./components/AddProjectPage";
 import ProjectTimelinePage from "./components/ProjectTimeLine";
 import UserTasks from './components/UserTasks';
-import ProjectDetails from "./components/ProjectDetails"; // This now includes TaskDetailModal
+import ProjectDetails from "./components/ProjectDetails";
 import LoginPage from "./components/LoginPage";
 
 function App() {
-  // 1. STATE MANAGEMENT
   const [user, setUser] = useState(null); 
   const [activePage, setActivePage] = useState("projects");
   const [selectedProject, setSelectedProject] = useState(null);
   const [projects, setProjects] = useState([]);
 
-  // 2. FETCH PROJECTS ON LOGIN
   useEffect(() => {
     if (!user) return;
-
     const loadProjects = async () => {
       try {
-        // Fetch projects specifically associated with the logged-in user
         const data = await fetchUserProjects(user.id);
         setProjects(data);
       } catch (err) {
         console.error("Failed to fetch projects", err);
       }
     };
-
     loadProjects();
-  }, [user]);
+  }, [user]); 
 
-  // 3. EVENT HANDLERS
   const handleArchive = (id) => {
     setProjects(prev => prev.map(p => p.projectId === id ? { ...p, isArchived: true } : p));
   };
@@ -42,18 +36,28 @@ function App() {
     setProjects(prev => prev.filter(p => p.projectId !== id));
   };
 
-  // Navigates to the details view and stores the project GUID/Object
   const handleProjectClick = (project) => {
     setSelectedProject(project);    
     setActivePage("project-details"); 
   };
 
-  // 4. AUTHENTICATION GATEKEEPER
+  // NEW: Helper to find a project by ID and jump to it
+  const handleJumpToProject = (projectId) => {
+    // Try to find the project in our list
+    const targetProject = projects.find(p => p.id === projectId || p.projectId === projectId);
+    
+    if (targetProject) {
+      setSelectedProject(targetProject);
+      setActivePage("project-details");
+    } else {
+      alert("Could not find the project details. It might be archived or deleted.");
+    }
+  };
+
   if (!user) {
     return <LoginPage onLogin={(userData) => setUser(userData)} />;
   }
 
-  // 5. NAVIGATION LOGIC (The Switch)
   const renderContent = () => {
     switch (activePage) {
       case "projects":
@@ -78,25 +82,25 @@ function App() {
       case "project-timeline":
         return <ProjectTimelinePage />;
       case "my-tasks":
-         return <UserTasks currentUserId={user.id} />;
+         // UPDATED: We pass 'projects' and the navigation handler!
+         return (
+            <UserTasks 
+                currentUserId={user.id} 
+                projects={projects} 
+                onNavigate={handleJumpToProject} 
+            />
+         );
       default:
         return <ProjectPage projects={projects} onClick={handleProjectClick} />;
     }
   };
 
-  // 6. MAIN LAYOUT
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Pass state and setter to Sidebar so it can trigger page changes */}
       <Sidebar activePage={activePage} setActivePage={setActivePage} />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         <Header title={`Welcome, ${user.username}`} />
-        
-        {/* Main viewing area */}
-        <main className="flex-1 overflow-auto bg-gray-50">
-          {renderContent()}
-        </main>
+        <main className=" flex-1 overflow-auto">{renderContent()}</main>
       </div>
     </div>
   );

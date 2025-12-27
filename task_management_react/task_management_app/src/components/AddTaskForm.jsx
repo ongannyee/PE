@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { fetchAllUsers } from '../API/UserAPI';
-import { fetchUserProjects } from '../API/UserAPI';
+import { fetchUserProjects } from '../API/UserAPI'; // Note: You imported this but didn't use it, strictly speaking it can be removed if unused.
 import { createTask, assignUserToTask } from '../API/TaskItemAPI';
 
 const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [priority, setPriority] = useState(1);
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState(''); // State is correct
   const [selectedProjectId, setSelectedProjectId] = useState(defaultProjectId || '');
   
   // User Assignment States
@@ -23,7 +23,6 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
     const loadData = async () => {
       try {
         const usersRaw = await fetchAllUsers();
-        // Normalize user data to ensure we have GUIDs
         setAllUsers(usersRaw.map(u => ({
           id: (u.id || u.userId).toString().toLowerCase(),
           username: u.username || u.userName,
@@ -35,7 +34,6 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
     };
     loadData();
 
-    // Close suggestions on outside click
     const handleClickOutside = (e) => {
       if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target)) {
         setShowSuggestions(false);
@@ -70,15 +68,15 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
         status: 0,
         priority: parseInt(priority),
         projectId: selectedProjectId,
-        dueDate: dueDate || null
+        dueDate: dueDate || null 
       });
 
-      // 2. Assign All Selected Users (Sequential or Parallel)
+      // 2. Assign All Selected Users
       if (newTask && newTask.id && selectedUsers.length > 0) {
         const assignmentPromises = selectedUsers.map(user => 
           assignUserToTask({
             userId: user.id,
-            taskId: newTask.id // The GUID from the new task
+            taskId: newTask.id 
           })
         );
         await Promise.all(assignmentPromises);
@@ -88,6 +86,9 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
       setTitle('');
       setDesc('');
       setSelectedUsers([]);
+      setDueDate(''); // <--- CRITICAL FIX: Reset date after submit
+      setPriority(1); // Optional: Good practice to reset priority to default too
+      
       if (onTaskAdded) onTaskAdded();
     } catch (err) {
       console.error(err);
@@ -101,6 +102,9 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
     !selectedUsers.some(sel => sel.id === u.id) &&
     u.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Helper to get today's date in YYYY-MM-DD format for the 'min' attribute
+  const today = new Date().toISOString().split('T')[0];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -163,7 +167,13 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
         </div>
         <div>
           <label className="block text-sm font-bold text-gray-700">Due Date</label>
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full border rounded-lg p-2 mt-1" />
+          <input 
+            type="date" 
+            value={dueDate} 
+            min={today} /* <--- UI FIX: Prevents selecting past dates */
+            onChange={(e) => setDueDate(e.target.value)} 
+            className="w-full border rounded-lg p-2 mt-1" 
+          />
         </div>
       </div>
 
