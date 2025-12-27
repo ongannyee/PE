@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchAllUsers } from '../API/UserAPI';
-import { fetchUserProjects } from '../API/UserAPI'; // Note: You imported this but didn't use it, strictly speaking it can be removed if unused.
 import { createTask, assignUserToTask } from '../API/TaskItemAPI';
 
-const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
+// Added availableMembers prop to restrict user selection
+const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId, availableMembers = [] }) => {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [priority, setPriority] = useState(1);
-  const [dueDate, setDueDate] = useState(''); // State is correct
+  const [dueDate, setDueDate] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState(defaultProjectId || '');
   
   // User Assignment States
-  const [allUsers, setAllUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -19,21 +17,14 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const usersRaw = await fetchAllUsers();
-        setAllUsers(usersRaw.map(u => ({
-          id: (u.id || u.userId).toString().toLowerCase(),
-          username: u.username || u.userName,
-          email: u.email
-        })));
-      } catch (err) {
-        console.error("Failed to load users", err);
-      }
-    };
-    loadData();
+  // Use the availableMembers prop instead of fetching all users
+  const projectUsers = availableMembers.map(u => ({
+    id: (u.id || u.userId).toString().toLowerCase(),
+    username: u.username || u.userName,
+    email: u.email
+  }));
 
+  useEffect(() => {
     const handleClickOutside = (e) => {
       if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target)) {
         setShowSuggestions(false);
@@ -61,7 +52,6 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
     
     setIsSubmitting(true);
     try {
-      // 1. Create the Task
       const newTask = await createTask({
         title,
         description: desc,
@@ -71,7 +61,6 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
         dueDate: dueDate || null 
       });
 
-      // 2. Assign All Selected Users
       if (newTask && newTask.id && selectedUsers.length > 0) {
         const assignmentPromises = selectedUsers.map(user => 
           assignUserToTask({
@@ -82,12 +71,11 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
         await Promise.all(assignmentPromises);
       }
 
-      // 3. Cleanup
       setTitle('');
       setDesc('');
       setSelectedUsers([]);
-      setDueDate(''); // <--- CRITICAL FIX: Reset date after submit
-      setPriority(1); // Optional: Good practice to reset priority to default too
+      setDueDate(''); 
+      setPriority(1); 
       
       if (onTaskAdded) onTaskAdded();
     } catch (err) {
@@ -98,12 +86,11 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
     }
   };
 
-  const filteredSuggestions = allUsers.filter(u => 
+  const filteredSuggestions = projectUsers.filter(u => 
     !selectedUsers.some(sel => sel.id === u.id) &&
     u.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Helper to get today's date in YYYY-MM-DD format for the 'min' attribute
   const today = new Date().toISOString().split('T')[0];
 
   return (
@@ -126,9 +113,8 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
         />
       </div>
 
-      {/* Assignment Field */}
       <div className="relative" ref={searchWrapperRef}>
-        <label className="block text-sm font-bold text-gray-700">Assign To</label>
+        <label className="block text-sm font-bold text-gray-700">Assign To (Project Members Only)</label>
         <div className="flex flex-wrap gap-2 my-2">
           {selectedUsers.map(u => (
             <span key={u.id} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-xs font-bold flex items-center">
@@ -170,7 +156,7 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId }) => {
           <input 
             type="date" 
             value={dueDate} 
-            min={today} /* <--- UI FIX: Prevents selecting past dates */
+            min={today}
             onChange={(e) => setDueDate(e.target.value)} 
             className="w-full border rounded-lg p-2 mt-1" 
           />

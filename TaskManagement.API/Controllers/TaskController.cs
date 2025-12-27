@@ -182,5 +182,26 @@ namespace TaskManagement.API.Controllers
 
             return Ok(members);
         }
+
+        [HttpGet("{taskId:guid}/attachments")]
+        public async Task<IActionResult> GetTaskAttachments(Guid taskId)
+        {
+            var taskExists = await _context.Tasks.AnyAsync(t => t.Id == taskId);
+            if (!taskExists) return NotFound($"Task with ID {taskId} not found.");
+
+            var attachments = await _context.Attachments
+                .Where(a => a.TaskId == taskId)
+                .Select(a => new AttachmentDTO
+                {
+                    Id = a.Id,
+                    AttachmentId = a.AttachmentId,
+                    FileName = a.FileName,
+                    FileUrl = a.FileUrl,
+                    UploadedAt = a.UploadedAt
+                })
+                .ToListAsync();
+
+            return Ok(attachments);
+        }
     }
 }
