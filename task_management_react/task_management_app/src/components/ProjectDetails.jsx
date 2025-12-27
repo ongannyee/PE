@@ -1,28 +1,51 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AddTaskForm from './AddTaskForm';
 import UpdateTaskModal from './UpdateTaskModal';
-import SubtaskList from './SubtaskList'; 
+import SubtaskList from './SubtaskList';
 import CommentSection from './CommentSection';
 import ProjectPieChart from './ProjectPieChart';
 import ProjectBarChart from './ProjectBarChart';
 import ProjectLineChart from './ProjectLineChart';
 import DataTable from './DataTable';
 
-// API Imports
 import { fetchProjectTasks, fetchProjectMembers } from '../API/ProjectAPI';
-import { fetchSubTasksByTask } from '../API/TaskItemAPI'; 
+import { fetchUserTasks } from '../API/UserAPI'; // Added UserAPI
+import { deleteTask, fetchSubTasksByTask, fetchTaskAttachments } from '../API/TaskItemAPI';
+import { fetchSubTaskAttachments } from '../API/SubtaskAPI';
+import { uploadToTask, deleteAttachment } from '../API/AttachmentAPI';
 
 const ProjectDetails = ({ project, onBack, currentUserId }) => {
   const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
-  const [activeTab, setActiveTab] = useState('tasks');
+  const [memberWorkloads, setMemberWorkloads] = useState([]); // State for Bar Chart data
+  const [activeTab, setActiveTab] = useState('tasks'); // For switching between Tasks and Stats
   const [expandedTaskId, setExpandedTaskId] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedTaskForEdit, setSelectedTaskForEdit] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSortedByPriority, setIsSortedByPriority] = useState(false);
 
+  const [isFileModalOpen, setIsFileModalOpen] = useState(false);
+  const [fileTargetTask, setFileTargetTask] = useState(null);
+  const [taskFiles, setTaskFiles] = useState([]);
+  const [subtaskFilesMap, setSubtaskFilesMap] = useState([]);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [isFilesLoading, setIsFilesLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
   const priorityWeight = { 'Urgent': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
+
+  // Helper for consistent status logic
+  const getCalculatedStatusLabel = (t, total, completed) => {
+    if (total > 0) {
+      if (completed === total) return 'Completed';
+      if (completed > 0) return 'In Progress';
+      return 'To Do';
+    }
+    if (t.status === 2 || t.status === 'Completed' || t.status === 'Done') return 'Completed';
+    if (t.status === 1 || t.status === 'InProgress' || t.status === 'In Progress') return 'In Progress';
+    return 'To Do';
+  };
 
   const loadInitialData = useCallback(async () => {
     if (!project || !project.id) return;
@@ -32,116 +55,182 @@ const ProjectDetails = ({ project, onBack, currentUserId }) => {
         fetchProjectMembers(project.id)
       ]);
 
+      // 1. Load Tasks with Subtask Progress
       const tasksWithProgress = await Promise.all(taskData.map(async (t) => {
         const subs = await fetchSubTasksByTask(t.id);
-        const completed = subs.filter(s => s.isCompleted).length;
         const total = subs.length;
-        
-        let autoStatus = 'To Do';
-        if (total > 0) {
-            if (completed === total) autoStatus = 'Completed';
-            else if (completed > 0) autoStatus = 'In Progress';
-        } else {
-            // Mapping numeric status from C# Enum if applicable
-            if (t.status === 2 || t.status === 'Completed') autoStatus = 'Completed';
-            else if (t.status === 1 || t.status === 'In Progress') autoStatus = 'In Progress';
-        }
+        const completed = subs.filter(s => s.isCompleted).length;
+        const autoStatus = getCalculatedStatusLabel(t, total, completed);
 
-        return { 
-            ...t, 
-            totalSubs: total, 
-            completedSubs: completed,
-            calculatedStatus: autoStatus
+        return {
+          ...t,
+          totalSubs: total,
+          completedSubs: completed,
+          calculatedStatus: autoStatus
         };
       }));
 
       setTasks(tasksWithProgress);
       setMembers(memberData || []);
+
+      // 2. Load User-Specific Workloads for Bar Chart via UserAPI
+      const workloadResults = await Promise.all((memberData || []).map(async (m) => {
+        const mId = m.id || m.userId || m.guid;
+        const userTasks = await fetchUserTasks(mId);
+        
+        // Filter tasks that belong to this specific project
+        const projectSpecificTasks = userTasks.filter(ut => ut.projectId === project.id);
+
+        return {
+          name: m.username || 'User',
+          todo: projectSpecificTasks.filter(ut => getCalculatedStatusLabel(ut, 0, 0) === 'To Do').length,
+          inprogress: projectSpecificTasks.filter(ut => getCalculatedStatusLabel(ut, 0, 0) === 'In Progress').length,
+          completed: projectSpecificTasks.filter(ut => getCalculatedStatusLabel(ut, 0, 0) === 'Completed').length,
+        };
+      }));
+
+      setMemberWorkloads(workloadResults);
     } catch (err) {
       console.error("Error loading project details:", err);
     }
   }, [project]);
 
-  useEffect(() => { loadInitialData(); }, [loadInitialData]);
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
 
   const analytics = useMemo(() => {
-    // 1. PIE DATA
     const pie = [
       { name: 'Completed', value: tasks.filter(t => t.calculatedStatus === 'Completed').length },
       { name: 'In Progress', value: tasks.filter(t => t.calculatedStatus === 'In Progress').length },
       { name: 'To Do', value: tasks.filter(t => t.calculatedStatus === 'To Do').length },
     ];
 
-    // 2. BAR DATA - Enhanced matching logic
-    const bar = members.map(m => {
-      // Get the member ID from various possible keys
-      const mId = m.id || m.userId || m.guid;
-      
-      const memberTasks = tasks.filter(t => {
-        // Look inside the assignedTo array of the task
-        if (!t.assignedTo || !Array.isArray(t.assignedTo)) return false;
-        
-        return t.assignedTo.some(assignee => {
-            const aId = assignee.id || assignee.userId || assignee.guid || assignee;
-            // Use loose equality (==) in case one is a string and other is a GUID object
-            return aId == mId;
-        });
-      });
+    const sortedForLine = [...tasks].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+    const line = sortedForLine.map((t, idx) => ({
+      date: new Date(t.dueDate).toLocaleDateString(),
+      actual: Math.round((tasks.filter(tk => tk.calculatedStatus === 'Completed' && new Date(tk.dueDate) <= new Date(t.dueDate)).length / (tasks.length || 1)) * 100),
+      expected: Math.round(((idx + 1) / (tasks.length || 1)) * 100)
+    }));
 
-      return {
-        name: m.username || m.name || 'Unknown',
-        todo: memberTasks.filter(t => t.calculatedStatus === 'To Do').length,
-        inprogress: memberTasks.filter(t => t.calculatedStatus === 'In Progress').length,
-        completed: memberTasks.filter(t => t.calculatedStatus === 'Completed').length,
-      };
-    });
-
-    // 3. LINE DATA
-    const sortedTasks = [...tasks].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-    const line = sortedTasks.map((t, idx) => {
-      const completedSoFar = tasks.filter(task => task.calculatedStatus === 'Completed' && new Date(task.dueDate) <= new Date(t.dueDate)).length;
-      return {
-        date: new Date(t.dueDate).toLocaleDateString(),
-        actual: Math.round((completedSoFar / (tasks.length || 1)) * 100),
-        expected: Math.round(((idx + 1) / (tasks.length || 1)) * 100)
-      };
-    });
-
-    return { pie, bar, line };
-  }, [tasks, members]);
+    return { pie, line };
+  }, [tasks]);
 
   const getStatusInfo = (task) => {
     const statusLabel = task.calculatedStatus || 'To Do';
     switch (statusLabel) {
-        case 'Completed': return { label: 'Completed', color: 'bg-emerald-50 text-emerald-600 border-emerald-100' };
-        case 'In Progress': return { label: 'In Progress', color: 'bg-amber-50 text-amber-600 border-amber-100' };
-        default: return { label: 'To Do', color: 'bg-slate-100 text-slate-500 border-slate-200' };
+      case 'Completed': return { label: 'Completed', color: 'bg-emerald-50 text-emerald-600 border-emerald-100' };
+      case 'In Progress': return { label: 'In Progress', color: 'bg-amber-50 text-amber-600 border-amber-100' };
+      default: return { label: 'To Do', color: 'bg-slate-100 text-slate-500 border-slate-200' };
     }
   };
 
+  const handleFolderClick = async (e, task) => {
+    e.stopPropagation();
+    if (!task || !task.id) return;
+    setFileTargetTask(task);
+    setIsFileModalOpen(true);
+    setIsFilesLoading(true);
+    setTaskFiles([]);
+    try {
+      const taskAttachments = await fetchTaskAttachments(task.id);
+      setTaskFiles(taskAttachments || []);
+      const subs = await fetchSubTasksByTask(task.id);
+      const subFiles = await Promise.all(subs.map(async (st) => {
+        const attachments = await fetchSubTaskAttachments(st.id);
+        return { title: st.title, files: attachments || [] };
+      }));
+      setSubtaskFilesMap(subFiles.filter(item => item.files.length > 0));
+    } catch (err) { console.error("Error loading task resources:", err); }
+    finally { setIsFilesLoading(false); }
+  };
+
+  const handleUploadToTask = async () => {
+    if (!uploadFile || !fileTargetTask) return;
+    setIsUploading(true);
+    try {
+      await uploadToTask(uploadFile, fileTargetTask.id);
+      setUploadFile(null);
+      const updated = await fetchTaskAttachments(fileTargetTask.id);
+      setTaskFiles(updated || []);
+    } catch (err) { alert("Upload failed."); }
+    finally { setIsUploading(false); }
+  };
+
+  const handleDeleteFile = async (fileId) => {
+    if (!window.confirm("Delete this file permanently?")) return;
+    try {
+      await deleteAttachment(fileId);
+      setTaskFiles(prev => prev.filter(f => (f.id || f.attachmentId || f.attachmentGuid) !== fileId));
+    } catch (err) { alert("Delete failed."); }
+  };
+
   const toggleTaskExpand = (id) => setExpandedTaskId(expandedTaskId === id ? null : id);
-  
-  const displayedTasks = isSortedByPriority 
+  const handleEditClick = (e, task) => { e.stopPropagation(); setSelectedTaskForEdit(task); setIsEditModalOpen(true); };
+  const handleDeleteTask = async (e, id) => {
+    e.stopPropagation();
+    if (window.confirm("Delete this task?")) { await deleteTask(id); loadInitialData(); }
+  };
+
+  const getPriorityStyles = (p) => {
+    switch (p) {
+      case 'Urgent': return 'bg-red-50 text-red-600 border-red-100';
+      case 'High': return 'bg-orange-50 text-orange-600 border-orange-100';
+      case 'Medium': return 'bg-blue-50 text-blue-600 border-blue-100';
+      default: return 'bg-slate-50 text-slate-500 border-slate-100';
+    }
+  };
+
+  const displayedTasks = isSortedByPriority
     ? [...tasks].sort((a, b) => (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0))
     : tasks;
 
   return (
     <div className="p-8 max-w-6xl mx-auto bg-gray-50 min-h-screen text-left">
+      {/* HEADER SECTION */}
       <div className="flex justify-between items-center mb-8">
-        <button onClick={onBack} className="text-slate-500 hover:text-blue-600 font-medium">← Back</button>
+        <button onClick={onBack} className="group flex items-center gap-2 text-slate-500 hover:text-blue-600 font-medium transition-colors">
+          <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Projects
+        </button>
         <div className="flex gap-3">
-          <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className="bg-white border px-4 py-2 rounded-xl text-sm font-bold shadow-sm">
-            {isSortedByPriority ? '🔼 Priority Sorted' : 'Sort Priority'}
+          <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className={`px-4 py-2.5 rounded-xl font-bold transition-all border flex items-center gap-2 ${isSortedByPriority ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-400'}`}>
+            <span>{isSortedByPriority ? '🔼 Priority Sorted' : 'Sort by Priority'}</span>
           </button>
-          <button onClick={() => setIsAddModalOpen(true)} className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold shadow-sm">+ New Task</button>
+          <button onClick={() => setIsAddModalOpen(true)} className="bg-slate-900 hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-sm transition-all">+ New Task</button>
         </div>
       </div>
 
-      <div className="bg-white p-10 rounded-3xl border border-slate-200 mb-10 shadow-sm">
-        <h1 className="text-5xl font-black text-slate-900 tracking-tight">{project.projectName}</h1>
+      {/* PROJECT INFO BANNER */}
+      <div className="bg-white p-10 rounded-3xl shadow-sm border border-slate-200 mb-10">
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+              <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Active Project</span>
+            </div>
+            <h1 className="text-5xl font-black text-slate-900 tracking-tight">{project.projectName}</h1>
+            <p className="text-slate-500 mt-4 text-xl leading-relaxed max-w-2xl">{project.projectGoal}</p>
+          </div>
+          <div className="hidden md:block w-64 text-right">
+            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Team Members</h5>
+            <div className="flex flex-wrap justify-end gap-2">
+              {members.map((m, idx) => (
+                <div key={idx} className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-400 flex items-center justify-center text-white font-bold border-2 border-white shadow-sm" title={m.username}>
+                  {(m.username || '?').charAt(0).toUpperCase()}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* TAB NAVIGATION */}
         <div className="flex gap-8 mt-10 border-b border-slate-100">
-            <button onClick={() => setActiveTab('tasks')} className={`pb-4 text-sm font-black uppercase tracking-widest transition-all ${activeTab === 'tasks' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>Tasks ({tasks.length})</button>
-            <button onClick={() => setActiveTab('stats')} className={`pb-4 text-sm font-black uppercase tracking-widest transition-all ${activeTab === 'stats' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>Analytics</button>
+          <button onClick={() => setActiveTab('tasks')} className={`pb-4 text-sm font-black uppercase tracking-widest transition-all ${activeTab === 'tasks' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
+            Task Board ({tasks.length})
+          </button>
+          <button onClick={() => setActiveTab('stats')} className={`pb-4 text-sm font-black uppercase tracking-widest transition-all ${activeTab === 'stats' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
+            Analytics & Stats
+          </button>
         </div>
       </div>
 
@@ -149,28 +238,43 @@ const ProjectDetails = ({ project, onBack, currentUserId }) => {
         <div className="space-y-4 pb-20">
           {displayedTasks.map(t => {
             const status = getStatusInfo(t);
+            const progressPercent = (t.completedSubs / (t.totalSubs || 1)) * 100;
             return (
-              <div key={t.id} className="bg-white rounded-2xl border p-6 hover:border-blue-400 shadow-sm transition-all overflow-hidden">
-                <div onClick={() => toggleTaskExpand(t.id)} className="flex justify-between items-center cursor-pointer">
+              <div key={t.id} className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden ${expandedTaskId === t.id ? 'ring-4 ring-blue-500/10 shadow-xl border-blue-200' : 'hover:border-blue-400 border-slate-200 shadow-sm'}`}>
+                <div onClick={() => toggleTaskExpand(t.id)} className="p-6 flex justify-between items-center cursor-pointer group select-none">
                   <div className="flex items-center gap-6">
                     <div className={`w-3 h-3 rounded-full ${status.label === 'Completed' ? 'bg-emerald-500' : (status.label === 'In Progress' ? 'bg-amber-400' : 'bg-slate-300')}`}></div>
                     <div>
-                      <h4 className="text-xl font-bold text-slate-800">{t.title}</h4>
-                      <div className="flex gap-4 mt-2">
-                        <span className={`text-[10px] font-black px-2 py-1 rounded border uppercase tracking-wider ${status.color}`}>{status.label}</span>
+                      <h4 className={`text-xl font-bold ${expandedTaskId === t.id ? 'text-blue-600' : 'text-slate-800'}`}>{t.title}</h4>
+                      <div className="flex items-center gap-4 mt-2">
+                        <span className={`text-[10px] font-black px-2 py-1 rounded-lg border uppercase tracking-wider ${getPriorityStyles(t.priority)}`}>{t.priority}</span>
+                        <span className={`text-[10px] font-black px-2 py-1 rounded-lg border uppercase tracking-wider ${status.color}`}>{status.label}</span>
                         <span className="text-slate-400 text-xs font-bold">📅 {new Date(t.dueDate).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className={`h-full transition-all duration-500 ${status.label === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${progressPercent}%` }}></div>
+                          </div>
+                          <span className="text-[10px] font-black text-slate-500 uppercase">{t.completedSubs}/{t.totalSubs} Steps</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <button onClick={(e) => { e.stopPropagation(); setSelectedTaskForEdit(t); setIsEditModalOpen(true); }} className="hover:text-blue-500 p-2">✏️</button>
-                    <div className={`transition-transform ${expandedTaskId === t.id ? 'rotate-180' : ''}`}>▼</div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={(e) => handleFolderClick(e, t)} className="p-3 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all">📂</button>
+                    <button onClick={(e) => handleEditClick(e, t)} className="p-3 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">✏️</button>
+                    <button onClick={(e) => handleDeleteTask(e, t.id)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">🗑️</button>
+                    <div className={`ml-2 text-slate-300 transition-transform ${expandedTaskId === t.id ? 'rotate-180' : ''}`}>▼</div>
                   </div>
                 </div>
                 {expandedTaskId === t.id && (
-                  <div className="mt-6 pt-6 border-t flex flex-col md:flex-row gap-10">
-                    <div className="flex-1"><SubtaskList taskGuid={t.id} onSubtaskStatusChange={loadInitialData} /></div>
-                    <div className="flex-1"><CommentSection taskGuid={t.id} taskName={t.title} currentUserId={currentUserId} projectId={project.id} /></div>
+                  <div className="border-t border-slate-100 bg-gradient-to-b from-slate-50/50 to-white flex flex-col md:flex-row min-h-[500px]">
+                    <div className="flex-1 p-10 border-r border-slate-100">
+                      <SubtaskList taskGuid={t.id} onSubtaskStatusChange={loadInitialData} />
+                    </div>
+                    <div className="flex-1 p-10 bg-white/40">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-6">Discussion Board</span>
+                      <CommentSection taskGuid={t.id} taskName={t.title} currentUserId={currentUserId} projectId={project.id} />
+                    </div>
                   </div>
                 )}
               </div>
@@ -178,27 +282,110 @@ const ProjectDetails = ({ project, onBack, currentUserId }) => {
           })}
         </div>
       ) : (
+        /* STATISTICS TAB */
         <div className="space-y-10 pb-20">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <ProjectPieChart data={analytics.pie} />
-                <ProjectBarChart data={analytics.bar} />
-            </div>
-            <ProjectLineChart data={analytics.line} />
-            <div className="space-y-6">
-                <DataTable title="Status Summary" headers={['Status', 'Count']} rows={analytics.pie} />
-                <DataTable title="Member Load" headers={['Member', 'To Do', 'In Progress', 'Done']} rows={analytics.bar.map(b => ({ name: b.name, todo: b.todo, inprogress: b.inprogress, done: b.completed }))} />
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <ProjectPieChart data={analytics.pie} />
+            <ProjectBarChart data={memberWorkloads} />
+          </div>
+          <ProjectLineChart data={analytics.line} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <DataTable title="Status Distribution" headers={['Status', 'Count']} rows={analytics.pie} />
+            <DataTable title="Team Workload" headers={['Member', 'To Do', 'In Progress', 'Done']} rows={memberWorkloads.map(b => ({ name: b.name, todo: b.todo, inprogress: b.inprogress, done: b.completed }))} />
+          </div>
         </div>
       )}
 
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg p-8">
-            <h2 className="text-3xl font-black text-slate-900 mb-6">New Task</h2>
-            <AddTaskForm userId={currentUserId} defaultProjectId={project.id} availableMembers={members} onTaskAdded={() => { loadInitialData(); setIsAddModalOpen(false); }} />
-            <button onClick={() => setIsAddModalOpen(false)} className="mt-4 w-full text-slate-400 font-black uppercase text-xs">Close</button>
+      {/* RESOURCE EXPLORER MODAL */}
+      {isFileModalOpen && fileTargetTask && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-8 border-b flex justify-between items-center bg-slate-50">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Resource Explorer</h2>
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">Task: {fileTargetTask.title}</p>
+              </div>
+              <button onClick={() => setIsFileModalOpen(false)} className="text-slate-300 hover:text-slate-900 text-3xl">&times;</button>
+            </div>
+            <div className="p-8 overflow-y-auto custom-scrollbar space-y-8">
+              <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100">
+                <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-3 text-center">Upload to Task Root</label>
+                <div className="flex gap-3">
+                  <input type="file" id="task-direct-upload" className="hidden" onChange={(e) => setUploadFile(e.target.files[0])} />
+                  <label htmlFor="task-direct-upload" className="flex-1 bg-white border-2 border-dashed border-blue-200 rounded-2xl p-4 text-sm font-bold text-slate-500 text-center cursor-pointer hover:border-blue-400 transition-all truncate">
+                    {uploadFile ? `📄 ${uploadFile.name}` : "Drop file here or click to browse"}
+                  </label>
+                  <button onClick={handleUploadToTask} disabled={!uploadFile || isUploading} className="bg-slate-900 text-white px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest">
+                    {isUploading ? "..." : "Upload"}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <h5 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">Direct Task Files</h5>
+                <div className="space-y-2">
+                  {isFilesLoading ? <p className="text-slate-400 text-[10px] animate-pulse">Checking for files...</p> : 
+                   taskFiles.length > 0 ? taskFiles.map(file => (
+                    <div key={file.id || file.attachmentId} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <span className="text-2xl opacity-50">📄</span>
+                        <p className="text-xs font-bold text-slate-800 truncate">{file.fileName}</p>
+                      </div>
+                      <div className="flex gap-3 ml-4 whitespace-nowrap">
+                        <a href={`http://localhost:5017${file.fileUrl}`} target="_blank" rel="noreferrer" className="text-[9px] font-black text-blue-600 uppercase hover:underline">Download</a>
+                        <button onClick={() => handleDeleteFile(file.id || file.attachmentId)} className="text-[9px] font-black text-red-400 uppercase">Delete</button>
+                      </div>
+                    </div>
+                  )) : <p className="text-slate-400 text-[10px] italic">No root files found.</p>}
+                </div>
+              </div>
+              <div>
+                <h5 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-4">Subtask Attachments</h5>
+                <div className="space-y-4">
+                  {subtaskFilesMap.length > 0 ? subtaskFilesMap.map((sub, idx) => (
+                    <div key={idx} className="bg-slate-50 rounded-2xl p-4">
+                        <p className="text-[10px] font-black text-slate-400 uppercase mb-3 px-2">Subtask: {sub.title}</p>
+                        <div className="space-y-2">
+                            {sub.files.map(file => (
+                                <div key={file.id || file.attachmentId} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                        <span className="text-lg">📎</span>
+                                        <p className="text-xs font-medium text-slate-700 truncate">{file.fileName}</p>
+                                    </div>
+                                    <a href={`http://localhost:5017${file.fileUrl}`} target="_blank" rel="noreferrer" className="text-[9px] font-black text-blue-600 uppercase">Download</a>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                  )) : <p className="text-slate-400 text-[10px] italic">No subtask files found.</p>}
+                </div>
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 border-t flex justify-end">
+                <button onClick={() => setIsFileModalOpen(false)} className="px-10 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest">Done</button>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* NEW TASK MODAL */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg p-8">
+            <h2 className="text-3xl font-black text-slate-900 mb-6 tracking-tight">New Task</h2>
+            <AddTaskForm userId={currentUserId} defaultProjectId={project.id} availableMembers={members} onTaskAdded={() => { loadInitialData(); setIsAddModalOpen(false); }} />
+            <button onClick={() => setIsAddModalOpen(false)} className="mt-4 w-full text-slate-400 text-xs font-black uppercase tracking-widest">Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT TASK MODAL */}
+      {isEditModalOpen && selectedTaskForEdit && (
+        <UpdateTaskModal
+            task={selectedTaskForEdit}
+            availableMembers={members}
+            onClose={() => setIsEditModalOpen(false)}
+            onTaskUpdated={() => { loadInitialData(); setIsEditModalOpen(false); }}
+        />
       )}
     </div>
   );
