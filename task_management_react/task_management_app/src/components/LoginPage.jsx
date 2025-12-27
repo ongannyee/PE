@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+// 1. Import the API functions
 import { loginUser, registerUser } from '../API/UserAPI';
 
 const LoginPage = ({ onLogin }) => {
@@ -15,39 +16,28 @@ const LoginPage = ({ onLogin }) => {
     setError('');
 
     try {
+      // 2. Logic is now much simpler!
       if (isRegistering) {
+        // REGISTER
         await registerUser(formData);
         alert("Registration successful! Please log in.");
-        setIsRegistering(false); 
+        setIsRegistering(false); // Switch to login view
       } else {
-        // 1. Call API
-        const response = await loginUser({ 
+        // LOGIN
+        // We pass only the fields the API expects
+        const data = await loginUser({ 
             email: formData.email, 
             password: formData.password 
         });
-
-        console.log("SERVER RESPONSE:", response); 
-
-        const responseData = response.data ? response.data : response;
-
-        const token = responseData.Token || responseData.token;
-        const user = responseData.User || responseData.user;
-
-        if (!token || !user) {
-            throw new Error("Login succeeded, but data is missing. Check console.");
-        }
-
-        // 3. Save Token & User to LocalStorage
-        localStorage.setItem("authToken", token);
-        localStorage.setItem("user", JSON.stringify(user));
-
-        // 4. Update React State
-        onLogin(user);
+        
+        // Success! Pass the user data up to App.jsx
+        onLogin(data);
       }
 
     } catch (err) {
       console.error("Authentication Error:", err);
-      setError(err.message || "Authentication failed.");
+      // The API wrapper throws standard JS errors now, so we just read the message
+      setError(err.message || "Authentication failed. Please check your connection.");
     }
   };
 

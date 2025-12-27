@@ -12,23 +12,10 @@ export const registerUser = async (userData) => {
 };
 // 1.5 LOGIN User (Add this!)
 // Matches: [HttpPost("login")] (Assuming you created AuthController)
-// src/API/UserAPI.js
-
-export const loginUser = async (user) => {
-  // ensure you are using the correct base URL
-  const response = await fetch(`http://localhost:5017/api/User/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(user),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Login failed: ${response.statusText}`);
-  }
-
-  return await response.json(); 
+export const loginUser = async (credentials) => {
+    // credentials = { email: "...", password: "..." }
+    const response = await axios.post("http://localhost:5017/api/Auth/login", credentials);
+    return response.data;
 };
 
 // 2. GET all users
