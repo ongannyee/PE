@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TaskManagement.API.Models.Domain
 {
@@ -6,17 +7,23 @@ namespace TaskManagement.API.Models.Domain
     {
         [Key]
         public Guid Id { get; set; }
+        
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int CommentId { get; set; } // Lecturer's requirement
         
         public string Text { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Foreign Key: Which Task does this comment belong to?
+        // Foreign Key for Task
         public Guid TaskId { get; set; }
-        public TaskItem TaskItem { get; set; } = null!;
+        
+        [ForeignKey("TaskId")]
+        public virtual TaskItem TaskItem { get; set; } = null!;
 
-        // Foreign Key: Who wrote this comment?
+        // Foreign Key for User
         public Guid UserId { get; set; }
-        public User User { get; set; } = null!;
+        
+        [ForeignKey("UserId")] // This fixes the UserId1 / Unknown User issue
+        public virtual User User { get; set; } = null!;
     }
 }

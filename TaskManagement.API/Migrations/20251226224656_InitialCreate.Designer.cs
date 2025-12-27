@@ -12,8 +12,8 @@ using TaskManagement.API.Data;
 namespace TaskManagement.API.Migrations
 {
     [DbContext(typeof(ProjectDBContext))]
-    [Migration("20251226200641_SubTaskRevised")]
-    partial class SubTaskRevised
+    [Migration("20251226224656_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -51,9 +51,6 @@ namespace TaskManagement.API.Migrations
                     b.Property<Guid?>("TaskId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("TaskItemId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("datetime2");
 
@@ -64,7 +61,7 @@ namespace TaskManagement.API.Migrations
 
                     b.HasIndex("SubTaskId");
 
-                    b.HasIndex("TaskItemId");
+                    b.HasIndex("TaskId");
 
                     b.ToTable("Attachments");
                 });
@@ -87,9 +84,6 @@ namespace TaskManagement.API.Migrations
                     b.Property<Guid>("TaskId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("TaskItemId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -102,7 +96,7 @@ namespace TaskManagement.API.Migrations
                     b.HasIndex("CommentId")
                         .IsUnique();
 
-                    b.HasIndex("TaskItemId");
+                    b.HasIndex("TaskId");
 
                     b.HasIndex("UserId");
 
@@ -310,11 +304,13 @@ namespace TaskManagement.API.Migrations
                 {
                     b.HasOne("TaskManagement.API.Models.Domain.SubTask", "SubTask")
                         .WithMany("Attachments")
-                        .HasForeignKey("SubTaskId");
+                        .HasForeignKey("SubTaskId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("TaskManagement.API.Models.Domain.TaskItem", "TaskItem")
-                        .WithMany()
-                        .HasForeignKey("TaskItemId");
+                        .WithMany("TaskAttachments")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("SubTask");
 
@@ -325,14 +321,14 @@ namespace TaskManagement.API.Migrations
                 {
                     b.HasOne("TaskManagement.API.Models.Domain.TaskItem", "TaskItem")
                         .WithMany("Comments")
-                        .HasForeignKey("TaskItemId")
+                        .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("TaskManagement.API.Models.Domain.User", "User")
                         .WithMany("Comments")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("TaskItem");
@@ -440,6 +436,8 @@ namespace TaskManagement.API.Migrations
                     b.Navigation("SubTasks");
 
                     b.Navigation("TaskAssignments");
+
+                    b.Navigation("TaskAttachments");
                 });
 
             modelBuilder.Entity("TaskManagement.API.Models.Domain.User", b =>

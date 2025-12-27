@@ -65,8 +65,24 @@ namespace TaskManagement.API.Data
             modelBuilder.Entity<Comment>(entity =>
             {
                 entity.HasKey(c => c.Id);
-                entity.Property(c => c.CommentId).ValueGeneratedOnAdd();
-                entity.HasIndex(c => c.CommentId).IsUnique();
+
+                entity.Property(c => c.CommentId)
+                    .ValueGeneratedOnAdd();
+
+                entity.HasIndex(c => c.CommentId)
+                    .IsUnique();
+
+                // Explicitly link the navigation property to your Guid FK
+                entity.HasOne(c => c.TaskItem)
+                    .WithMany(t => t.Comments) // Or .WithMany(t => t.Comments) if TaskItem has a list
+                    .HasForeignKey(c => c.TaskId)
+                    .OnDelete(DeleteBehavior.Cascade); 
+
+                // Explicitly link the navigation property to your Guid FK
+                entity.HasOne(c => c.User)
+                    .WithMany(t => t.Comments) 
+                    .HasForeignKey(c => c.UserId)
+                    .OnDelete(DeleteBehavior.NoAction); 
             });
 
             // --- 6. CONFIGURATION FOR ATTACHMENT (Updated) ---
