@@ -1,8 +1,16 @@
-namespace TaskManagement.API.Models.DTO;
-
-public class ProjectMemberDTO
+namespace TaskManagement.API.Models.DTO
 {
-    public Guid UserId { get; set; }    // The Guid of the User
-    public Guid ProjectId { get; set; } // The Guid of the Project
+    public class ProjectMemberDTO
+    {
+        public Guid UserId { get; set; }
+        public Guid ProjectId { get; set; }
 
+        // To display names/emails in the UI members list
+        public string? Username { get; set; }
+        public string? Email { get; set; }
+
+        // --- UPDATED WITH REQUIRED ---
+        // Ensures this is always provided during mapping
+        public required string ProjectRole { get; set; } = "Contributor"; 
+    }
 }

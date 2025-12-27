@@ -15,28 +15,28 @@ namespace TaskManagement.API.Controllers
 
         // 1. GET: All subtasks with their attachments included
         [HttpGet]
-        public IActionResult GetAllSubTasks()
+        public async Task<IActionResult> GetAllSubTasks()
         {
-            var subtasks = _context.SubTasks
-                .Include(s => s.Attachments) // Ensures attachments are returned in the JSON
-                .ToList();
+            var subtasks = await _context.SubTasks
+                .Include(s => s.Attachments) 
+                .ToListAsync();
             return Ok(subtasks);
         }
 
         // 2. GET: Single subtask by Id with its attachments
         [HttpGet("{id:guid}")]
-        public IActionResult GetSubTaskById(Guid id)
+        public async Task<IActionResult> GetSubTaskById(Guid id)
         {
-            var subTask = _context.SubTasks
+            var subTask = await _context.SubTasks
                 .Include(s => s.Attachments)
-                .FirstOrDefault(s => s.Id == id);
+                .FirstOrDefaultAsync(s => s.Id == id);
 
             if (subTask == null) return NotFound();
             return Ok(subTask);
         }
 
         [HttpPost]
-        public IActionResult CreateSubTask([FromBody] CreateSubTaskRequestDTO dto, [FromQuery] Guid taskId)
+        public async Task<IActionResult> CreateSubTask([FromBody] CreateSubTaskRequestDTO dto, [FromQuery] Guid taskId)
         {
             var subTask = new SubTask 
             { 
@@ -45,32 +45,32 @@ namespace TaskManagement.API.Controllers
                 IsCompleted = false, 
                 TaskId = taskId 
             };
-            _context.SubTasks.Add(subTask);
-            _context.SaveChanges();
+            await _context.SubTasks.AddAsync(subTask);
+            await _context.SaveChangesAsync();
             return Ok(subTask);
         }
 
         [HttpPut("{id:guid}")]
-        public IActionResult UpdateSubTask(Guid id, [FromBody] UpdateSubTaskRequestDTO updateDto)
+        public async Task<IActionResult> UpdateSubTask(Guid id, [FromBody] UpdateSubTaskRequestDTO updateDto)
         {
-            var subTask = _context.SubTasks.FirstOrDefault(s => s.Id == id);
+            var subTask = await _context.SubTasks.FirstOrDefaultAsync(s => s.Id == id);
             if (subTask == null) return NotFound();
 
             subTask.Title = updateDto.Title;
             subTask.IsCompleted = updateDto.IsCompleted;
             
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return Ok(subTask);
         }
 
         [HttpDelete("{id:guid}")]
-        public IActionResult DeleteSubTask(Guid id)
+        public async Task<IActionResult> DeleteSubTask(Guid id)
         {
-            var subTask = _context.SubTasks.FirstOrDefault(s => s.Id == id);
+            var subTask = await _context.SubTasks.FirstOrDefaultAsync(s => s.Id == id);
             if (subTask == null) return NotFound();
 
             _context.SubTasks.Remove(subTask);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
@@ -79,31 +79,31 @@ namespace TaskManagement.API.Controllers
         // ==========================================
 
         [HttpPost("AssignUser")]
-        public IActionResult AssignUserToSubTask([FromBody] SubTaskAssignmentDTO dto)
+        public async Task<IActionResult> AssignUserToSubTask([FromBody] SubTaskAssignmentDTO dto)
         {
             var assignment = new SubTaskAssignment { UserId = dto.UserId, SubTaskId = dto.SubTaskId };
-            _context.SubTaskAssignments.Add(assignment);
-            _context.SaveChanges();
+            await _context.SubTaskAssignments.AddAsync(assignment);
+            await _context.SaveChangesAsync();
             return Ok(new { Message = "User assigned to subtask successfully" });
         }
 
         [HttpDelete("RemoveUser")]
-        public IActionResult RemoveUserFromSubTask([FromBody] SubTaskAssignmentDTO dto)
+        public async Task<IActionResult> RemoveUserFromSubTask([FromBody] SubTaskAssignmentDTO dto)
         {
-            var assignment = _context.SubTaskAssignments
-                .FirstOrDefault(sa => sa.SubTaskId == dto.SubTaskId && sa.UserId == dto.UserId);
+            var assignment = await _context.SubTaskAssignments
+                .FirstOrDefaultAsync(sa => sa.SubTaskId == dto.SubTaskId && sa.UserId == dto.UserId);
 
             if (assignment == null) return NotFound("User is not assigned to this subtask.");
 
             _context.SubTaskAssignments.Remove(assignment);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return Ok(new { Message = "User removed from subtask successfully" });
         }
 
         [HttpGet("{subTaskId:guid}/members")]
-        public IActionResult GetSubTaskMembers(Guid subTaskId)
+        public async Task<IActionResult> GetSubTaskMembers(Guid subTaskId)
         {
-            var members = _context.SubTaskAssignments
+            var members = await _context.SubTaskAssignments
                 .Where(sa => sa.SubTaskId == subTaskId)
                 .Include(sa => sa.User)
                 .Select(sa => new UserDTO
@@ -111,17 +111,18 @@ namespace TaskManagement.API.Controllers
                     Id = sa.User.Id,
                     UserId = sa.User.UserId,
                     Username = sa.User.Username,
-                    Email = sa.User.Email
+                    Email = sa.User.Email,
+                    Role = sa.User.Role // FIXED: Added Role to resolve CS9035 build error
                 })
-                .ToList();
+                .ToListAsync();
 
             return Ok(members);
         }
 
         [HttpGet("{subTaskId:guid}/attachments")]
-        public IActionResult GetSubTaskAttachments(Guid subTaskId)
+        public async Task<IActionResult> GetSubTaskAttachments(Guid subTaskId)
         {
-            var attachments = _context.Attachments
+            var attachments = await _context.Attachments
                 .Where(a => a.SubTaskId == subTaskId)
                 .Select(a => new AttachmentDTO
                 {
@@ -131,7 +132,7 @@ namespace TaskManagement.API.Controllers
                     FileUrl = a.FileUrl,
                     UploadedAt = a.UploadedAt
                 })
-                .ToList();
+                .ToListAsync();
 
             return Ok(attachments);
         }

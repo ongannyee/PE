@@ -3,7 +3,7 @@ import emailjs from '@emailjs/browser';
 import { addProject, assignUserToProject } from '../API/ProjectAPI';
 import { fetchAllUsers } from '../API/UserAPI';
 
-const AddProjectPage = ({ setActivePage, currentUserId }) => {
+const AddProjectPage = ({ setActivePage, currentUserId, userRole }) => {
   const [formData, setFormData] = useState({
     projectName: '',
     projectGoal: '',
@@ -19,12 +19,17 @@ const AddProjectPage = ({ setActivePage, currentUserId }) => {
   const wrapperRef = useRef(null);
 
   useEffect(() => {
+    // Initialize EmailJS with your Public Key
     emailjs.init("eBjUNRbvoFsABoiPC");
+
     const getUsers = async () => {
       try {
         const users = await fetchAllUsers();
+        // Filter out the current user so they don't invite themselves
         setAllUsers(users.filter(u => u.id !== currentUserId));
-      } catch (err) { console.error("Failed to load users", err); }
+      } catch (err) { 
+        console.error("Failed to load users", err); 
+      }
     };
     getUsers();
 
@@ -60,12 +65,11 @@ const AddProjectPage = ({ setActivePage, currentUserId }) => {
     return isNotSelected && matchesSearch;
   });
 
-  // NEW: Email logic
   const sendAssignmentEmails = async (projectData, usersToNotify) => {
     const emailPromises = usersToNotify.map(user => {
       return emailjs.send(
         'service_vb2sbtt', 
-        'template_0bcks3e', // Change to your new assignment template ID
+        'template_0bcks3e', 
         {
           to_name: user.username,
           to_email: user.email,
@@ -83,23 +87,34 @@ const AddProjectPage = ({ setActivePage, currentUserId }) => {
     setIsSubmitting(true);
 
     try {
-      const newProject = await addProject({ ...formData, isArchived: false });
+      // 1. Create the project. 
+      // Passing userRole here just in case the backend AddProject implementation 
+      // needs to log or verify the creator's role status.
+      const newProject = await addProject({ 
+        ...formData, 
+        isArchived: false, 
+        createdByUserId: currentUserId 
+      });
 
-      // 1. Assign creator (no email needed usually)
-      await assignUserToProject({ projectId: newProject.id, userId: currentUserId });
-
-      // 2. Assign team members
-      const assignmentPromises = selectedUsers.map(user => 
-        assignUserToProject({ projectId: newProject.id, userId: user.id })
-      );
-      await Promise.all(assignmentPromises);
-
-      // 3. Send Emails
+      // 2. Assign team members (Contributors)
       if (selectedUsers.length > 0) {
+        const assignmentPromises = selectedUsers.map(user => 
+          assignUserToProject({ 
+            projectId: newProject.id, 
+            userId: user.id,
+            projectRole: "Contributor" 
+          })
+        );
+        await Promise.all(assignmentPromises);
+
+        // 3. Send Emails to the team
         await sendAssignmentEmails(formData, selectedUsers);
       }
 
-      alert("Project created and team notified!");
+      alert(userRole === "Admin" 
+        ? "Project created successfully (Admin Action)." 
+        : "Project created and team notified!");
+        
       if (setActivePage) setActivePage('projects'); 
     } catch (err) {
       alert("Error: " + err.message);
@@ -110,7 +125,15 @@ const AddProjectPage = ({ setActivePage, currentUserId }) => {
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
-      <h2 className="text-3xl font-bold text-gray-800 mb-6">Start a New Project</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-3xl font-bold text-gray-800">Start a New Project</h2>
+        {userRole === "Admin" && (
+          <span className="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-1 rounded uppercase">
+            Admin Mode
+          </span>
+        )}
+      </div>
+
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md space-y-4 text-left">
         <div className="space-y-4">
           <div>
@@ -153,7 +176,7 @@ const AddProjectPage = ({ setActivePage, currentUserId }) => {
           />
           {showSuggestions && (
             <div className="absolute z-20 w-full bg-white border rounded-md shadow-xl mt-1 max-h-60 overflow-y-auto">
-              {filteredUsers.map(user => (
+              {filteredUsers.length > 0 ? filteredUsers.map(user => (
                 <div key={user.id} onClick={() => selectUser(user)} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 cursor-pointer border-b">
                   <div>
                     <p className="font-semibold text-sm">{user.username}</p>
@@ -161,7 +184,7 @@ const AddProjectPage = ({ setActivePage, currentUserId }) => {
                   </div>
                   <div className="text-blue-500 text-xs font-bold">+ Add</div>
                 </div>
-              ))}
+              )) : <div className="p-4 text-sm text-gray-500">No users found</div>}
             </div>
           )}
         </div>

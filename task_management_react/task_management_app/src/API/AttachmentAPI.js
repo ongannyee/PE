@@ -19,12 +19,12 @@ export const fetchAllAttachments = async () => {
 /**
  * 2. POST: Upload File for a Task
  */
-export const uploadToTask = async (file, taskIdGuid) => {
+export const uploadToTask = async (file, taskIdGuid, userId) => {
   const formData = new FormData();
   formData.append("file", file);
 
   try {
-    const response = await axios.post(`${API_URL}/upload/task/${taskIdGuid}`, formData, {
+    const response = await axios.post(`${API_URL}/upload/task/${taskIdGuid}?userId=${userId}`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -39,12 +39,12 @@ export const uploadToTask = async (file, taskIdGuid) => {
 /**
  * 3. POST: Upload File for a SubTask
  */
-export const uploadToSubTask = async (file, subTaskIdGuid) => {
+export const uploadToSubTask = async (file, subTaskIdGuid, userId) => {
   const formData = new FormData();
   formData.append("file", file);
 
   try {
-    const response = await axios.post(`${API_URL}/upload/subtask/${subTaskIdGuid}`, formData, {
+    const response = await axios.post(`${API_URL}/upload/subtask/${subTaskIdGuid}?userId=${userId}`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -57,13 +57,11 @@ export const uploadToSubTask = async (file, subTaskIdGuid) => {
 };
 
 /**
- * 4. DELETE: Remove Attachment using Guid ID
- * Matches updated Controller [HttpDelete("{id:guid}")]
+ * 4. DELETE: Remove Attachment
  */
-export const deleteAttachment = async (attachmentGuid) => {
+export const deleteAttachment = async (attachmentGuid, userId) => {
   try {
-    // Ensure we are passing the GUID 'id' from the object
-    const response = await axios.delete(`${API_URL}/${attachmentGuid}`);
+    const response = await axios.delete(`${API_URL}/${attachmentGuid}?userId=${userId}`);
     return response.data;
   } catch (error) {
     console.error("Delete Attachment Error:", error.response?.data || error.message);
@@ -76,5 +74,6 @@ export const deleteAttachment = async (attachmentGuid) => {
  */
 export const getFullFileUrl = (relativeUrl) => {
   if (!relativeUrl) return "";
+  if (relativeUrl.startsWith('http')) return relativeUrl;
   return `${BASE_URL}${relativeUrl}`;
 };

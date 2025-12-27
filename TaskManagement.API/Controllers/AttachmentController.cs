@@ -14,80 +14,81 @@ namespace TaskManagement.API.Controllers
         private readonly IWebHostEnvironment _environment = environment;
 
         [HttpGet]
-        public IActionResult GetAllAttachments()
+        public async Task<IActionResult> GetAllAttachments()
         {
-            var attachments = _context.Attachments.ToList();
+            var attachments = await _context.Attachments
+                .Select(a => new {
+                    a.Id,
+                    a.FileName,
+                    a.FileUrl,
+                    a.TaskId,
+                    a.SubTaskId,
+                    a.UploadedAt,
+                    a.UploadedByUserId // Ensure this is explicitly sent
+                })
+                .ToListAsync();
             return Ok(attachments);
         }
 
         [HttpPost("upload/task/{taskId:guid}")]
-        public async Task<IActionResult> UploadToTask(IFormFile file, [FromRoute] Guid taskId)
+        public async Task<IActionResult> UploadToTask(IFormFile file, [FromRoute] Guid taskId, [FromQuery] string userId)
         {
-            return await ProcessFileUpload(file, taskId, null);
+            return await ProcessFileUpload(file, taskId, null, userId);
         }
 
         [HttpPost("upload/subtask/{subTaskId:guid}")]
-        public async Task<IActionResult> UploadToSubTask(IFormFile file, [FromRoute] Guid subTaskId)
+        public async Task<IActionResult> UploadToSubTask(IFormFile file, [FromRoute] Guid subTaskId, [FromQuery] string userId)
         {
-            return await ProcessFileUpload(file, null, subTaskId);
+            return await ProcessFileUpload(file, null, subTaskId, userId);
         }
 
-        // UPDATED: Now uses Guid Id for consistency with other Controllers
         [HttpDelete("{id:guid}")]
-        public async Task<IActionResult> DeleteAttachment(Guid id)
+        public async Task<IActionResult> DeleteAttachment(Guid id, [FromQuery] string userId)
         {
-            // Find by the Guid Primary Key
-            var attachment = await _context.Attachments.FirstOrDefaultAsync(a => a.Id == id);
+            if (!Guid.TryParse(userId, out Guid userGuid))
+                return BadRequest("Invalid User ID format.");
+
+            var attachment = await _context.Attachments
+                .Include(a => a.TaskItem).ThenInclude(t => t.Project)
+                .Include(a => a.SubTask).ThenInclude(st => st.TaskItem).ThenInclude(t => t.Project)
+                .FirstOrDefaultAsync(a => a.Id == id);
             
-            if (attachment == null) 
-            {
-                return NotFound("Attachment not found in database.");
-            }
+            if (attachment == null) return NotFound("Attachment not found.");
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userGuid);
+            Guid? projectCreatorId = attachment.TaskItem?.Project?.CreatedByUserId 
+                                  ?? attachment.SubTask?.TaskItem?.Project?.CreatedByUserId;
+
+            bool isFileOwner = attachment.UploadedByUserId == userGuid;
+            bool isAdmin = user?.Role == "Admin";
+            bool isProjectCreator = projectCreatorId == userGuid;
+
+            if (!isFileOwner && !isAdmin && !isProjectCreator)
+                return Forbid("You do not have permission to delete this file.");
 
             try 
             {
-                // Convert Web URL back to Physical Path for deletion
-                // FileUrl is "/Uploads/unique-name.jpg"
                 var fileName = Path.GetFileName(attachment.FileUrl);
                 var physicalPath = Path.Combine(_environment.ContentRootPath, "Uploads", fileName);
-
-                if (System.IO.File.Exists(physicalPath))
-                {
-                    System.IO.File.Delete(physicalPath);
-                }
+                if (System.IO.File.Exists(physicalPath)) System.IO.File.Delete(physicalPath);
             }
-            catch (Exception ex)
-            {
-                // Log file system error but continue to remove record from DB if needed
-                Console.WriteLine($"File deletion error: {ex.Message}");
-            }
+            catch (Exception ex) { Console.WriteLine($"Error: {ex.Message}"); }
 
             _context.Attachments.Remove(attachment);
             await _context.SaveChangesAsync();
-            
             return NoContent();
         }
 
-        private async Task<IActionResult> ProcessFileUpload(IFormFile file, Guid? taskId, Guid? subTaskId)
+        private async Task<IActionResult> ProcessFileUpload(IFormFile file, Guid? taskId, Guid? subTaskId, string userId)
         {
-            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
-
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf", ".docx", ".xlsx", ".zip", ".txt" };
-            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-
-            if (!allowedExtensions.Contains(extension))
-            {
-                return BadRequest("File type not allowed.");
-            }
+            if (!Guid.TryParse(userId, out Guid userGuid)) return BadRequest("Invalid User ID.");
+            if (file == null || file.Length == 0) return BadRequest("No file.");
 
             var uploadsFolder = "Uploads";
             var localPath = Path.Combine(_environment.ContentRootPath, uploadsFolder);
-            
-            if (!Directory.Exists(localPath))
-            {
-                Directory.CreateDirectory(localPath);
-            }
+            if (!Directory.Exists(localPath)) Directory.CreateDirectory(localPath);
 
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             var uniqueFileName = $"{Guid.NewGuid()}{extension}";
             var fullPhysicalPath = Path.Combine(localPath, uniqueFileName);
 
@@ -103,13 +104,21 @@ namespace TaskManagement.API.Controllers
                 FileUrl = $"/{uploadsFolder}/{uniqueFileName}", 
                 TaskId = taskId,
                 SubTaskId = subTaskId,
-                UploadedAt = DateTime.UtcNow
+                UploadedAt = DateTime.UtcNow,
+                UploadedByUserId = userGuid
             };
 
             _context.Attachments.Add(attachment);
             await _context.SaveChangesAsync();
-
-            return Ok(attachment);
+            
+            // Return explicit object so frontend knows the property names
+            return Ok(new {
+                attachment.Id,
+                attachment.FileName,
+                attachment.FileUrl,
+                attachment.UploadedByUserId,
+                attachment.UploadedAt
+            });
         }
     }
 }

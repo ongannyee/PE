@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TaskManagement.API.Data;
 using TaskManagement.API.Models.Domain;
 using TaskManagement.API.Models.DTO;
-using System.Security.Claims;               // REQUIRED FOR JWT
-using Microsoft.IdentityModel.Tokens;       // REQUIRED FOR JWT
-using System.IdentityModel.Tokens.Jwt;      // REQUIRED FOR JWT
-using System.Text;                          // REQUIRED FOR JWT
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 
 namespace TaskManagement.API.Controllers
 {
@@ -17,9 +18,10 @@ namespace TaskManagement.API.Controllers
         private readonly IConfiguration _configuration = configuration;
 
         [HttpPost("register")]
-        public IActionResult Register([FromBody] RegisterRequestDTO request)
+        public async Task<IActionResult> Register([FromBody] RegisterUserRequestDTO request)
         {
-            if (_context.Users.Any(u => u.Email == request.Email))
+            // Check if user already exists
+            if (await _context.Users.AnyAsync(u => u.Email == request.Email))
             {
                 return BadRequest(new { Message = "Email already exists." });
             }
@@ -29,35 +31,36 @@ namespace TaskManagement.API.Controllers
                 Id = Guid.NewGuid(),
                 Username = request.Username,
                 Email = request.Email,
-                PasswordHash = request.Password, 
+                PasswordHash = request.Password, // Note: Use hashing in production
+                Role = "User", // Default role for new signups
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Users.Add(user);
-            _context.SaveChanges();
+            await _context.Users.AddAsync(user);
+            await _context.SaveChangesAsync();
 
             return Ok(new { Message = "User registered successfully!" });
         }
 
-        // POST: api/Auth/login
         [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginRequestDTO request)
+        public async Task<IActionResult> Login([FromBody] LoginRequestDTO request)
         {
             // 1. Find user
-            var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
 
             if (user == null || user.PasswordHash != request.Password)
             {
                 return Unauthorized("Invalid email or password.");
             }
 
-            // --- 2. GENERATE TOKEN (The part that was missing) ---
+            // 2. GENERATE TOKEN (Including Role)
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim("UserId", user.UserId.ToString()), 
                 new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Email, user.Email)
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role) // CRITICAL: Adds role to the token
             };
 
             var jwtSettings = _configuration.GetSection("JwtSettings");
@@ -74,7 +77,7 @@ namespace TaskManagement.API.Controllers
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
-            // 3. Return Token + User
+            // 3. Return Token + User (including Role)
             return Ok(new 
             { 
                 Token = tokenString, 
@@ -82,7 +85,8 @@ namespace TaskManagement.API.Controllers
                 { 
                     Id = user.Id, 
                     Username = user.Username, 
-                    Email = user.Email 
+                    Email = user.Email,
+                    Role = user.Role // Useful for frontend logic
                 } 
             });
         }

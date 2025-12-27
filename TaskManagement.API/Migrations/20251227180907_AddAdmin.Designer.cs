@@ -12,8 +12,8 @@ using TaskManagement.API.Data;
 namespace TaskManagement.API.Migrations
 {
     [DbContext(typeof(ProjectDBContext))]
-    [Migration("20251227133712_loginadded")]
-    partial class loginadded
+    [Migration("20251227180907_AddAdmin")]
+    partial class AddAdmin
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -109,6 +109,9 @@ namespace TaskManagement.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime2");
 
@@ -135,6 +138,8 @@ namespace TaskManagement.API.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("ProjectId")
                         .IsUnique();
 
@@ -148,6 +153,13 @@ namespace TaskManagement.API.Migrations
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ProjectRole")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Contributor");
 
                     b.HasKey("UserId", "ProjectId");
 
@@ -282,6 +294,13 @@ namespace TaskManagement.API.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("User");
+
                     b.Property<int>("UserId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
@@ -337,6 +356,17 @@ namespace TaskManagement.API.Migrations
                     b.Navigation("TaskItem");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskManagement.API.Models.Domain.Project", b =>
+                {
+                    b.HasOne("TaskManagement.API.Models.Domain.User", "Creator")
+                        .WithMany("OwnedProjects")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Creator");
                 });
 
             modelBuilder.Entity("TaskManagement.API.Models.Domain.ProjectMember", b =>
@@ -446,6 +476,8 @@ namespace TaskManagement.API.Migrations
             modelBuilder.Entity("TaskManagement.API.Models.Domain.User", b =>
                 {
                     b.Navigation("Comments");
+
+                    b.Navigation("OwnedProjects");
 
                     b.Navigation("ProjectMembers");
 

@@ -12,8 +12,8 @@ using TaskManagement.API.Data;
 namespace TaskManagement.API.Migrations
 {
     [DbContext(typeof(ProjectDBContext))]
-    [Migration("20251227145827_loginrelated")]
-    partial class loginrelated
+    [Migration("20251227193925_AttachmentUploader")]
+    partial class AttachmentUploader
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,58 @@ namespace TaskManagement.API.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUser", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("UserName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("IdentityUser");
+                });
 
             modelBuilder.Entity("TaskManagement.API.Models.Domain.Attachment", b =>
                 {
@@ -54,6 +106,10 @@ namespace TaskManagement.API.Migrations
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("UploadedByUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AttachmentId")
@@ -62,6 +118,8 @@ namespace TaskManagement.API.Migrations
                     b.HasIndex("SubTaskId");
 
                     b.HasIndex("TaskId");
+
+                    b.HasIndex("UploadedByUserId");
 
                     b.ToTable("Attachments");
                 });
@@ -109,6 +167,9 @@ namespace TaskManagement.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime2");
 
@@ -135,6 +196,8 @@ namespace TaskManagement.API.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("ProjectId")
                         .IsUnique();
 
@@ -148,6 +211,13 @@ namespace TaskManagement.API.Migrations
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ProjectRole")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Contributor");
 
                     b.HasKey("UserId", "ProjectId");
 
@@ -282,6 +352,13 @@ namespace TaskManagement.API.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("User");
+
                     b.Property<int>("UserId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
@@ -315,9 +392,17 @@ namespace TaskManagement.API.Migrations
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "UploadedByUser")
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("SubTask");
 
                     b.Navigation("TaskItem");
+
+                    b.Navigation("UploadedByUser");
                 });
 
             modelBuilder.Entity("TaskManagement.API.Models.Domain.Comment", b =>
@@ -337,6 +422,17 @@ namespace TaskManagement.API.Migrations
                     b.Navigation("TaskItem");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskManagement.API.Models.Domain.Project", b =>
+                {
+                    b.HasOne("TaskManagement.API.Models.Domain.User", "Creator")
+                        .WithMany("OwnedProjects")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Creator");
                 });
 
             modelBuilder.Entity("TaskManagement.API.Models.Domain.ProjectMember", b =>
@@ -446,6 +542,8 @@ namespace TaskManagement.API.Migrations
             modelBuilder.Entity("TaskManagement.API.Models.Domain.User", b =>
                 {
                     b.Navigation("Comments");
+
+                    b.Navigation("OwnedProjects");
 
                     b.Navigation("ProjectMembers");
 
