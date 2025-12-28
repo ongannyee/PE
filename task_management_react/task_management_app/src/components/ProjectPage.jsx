@@ -157,7 +157,7 @@ function ProjectPage({ currentUserId, userRole, onRefresh }) {
     <div className="relative p-8 bg-slate-50 min-h-screen font-sans">
       {/* Title Section */}
       <div className="mb-8">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Project Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Project Dashboard</h1>
         <p className="text-slate-500 text-[11px] font-bold uppercase tracking-[0.2em] mt-1">
           Manage and track your active workspace
         </p>

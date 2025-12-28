@@ -61,7 +61,7 @@ function Sidebar() {
             </svg>
           </div>
           <div>
-            <h1 className="text-xl font-bold">Project UWU</h1>
+            <h1 className="text-xl font-bold">CampusPlan</h1>
             <p className="text-blue-200 text-xs">Task Management Tool</p>
           </div>
         </div>
