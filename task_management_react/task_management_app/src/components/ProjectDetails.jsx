@@ -91,6 +91,17 @@ const ProjectDetails = ({ currentUserId, userRole }) => {
     return 'To Do';
   };
 
+  /**
+   * HELPER: Check if task is overdue
+   */
+  const checkIsOverdue = (dueDate, statusLabel) => {
+    if (!dueDate || statusLabel === 'Completed') return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time for accurate date comparison
+    const taskDate = new Date(dueDate);
+    return taskDate < today;
+  };
+
   const loadInitialData = useCallback(async () => {
     if (!projectId) return;
     try {
@@ -289,6 +300,8 @@ const ProjectDetails = ({ currentUserId, userRole }) => {
           {displayedTasks.map(t => {
             const status = getStatusInfo(t);
             const progressPercent = (t.completedSubs / (t.totalSubs || 1)) * 100;
+            const isOverdue = checkIsOverdue(t.dueDate, status.label);
+            
             return (
               <div key={t.id} className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden ${expandedTaskId === t.id ? 'ring-4 ring-blue-500/10 shadow-xl border-blue-200' : 'hover:border-blue-400 border-slate-200 shadow-sm'}`}>
                 <div onClick={() => toggleTaskExpand(t.id)} className="p-6 flex justify-between items-center cursor-pointer group select-none">
@@ -299,7 +312,13 @@ const ProjectDetails = ({ currentUserId, userRole }) => {
                       <div className="flex items-center gap-4 mt-2">
                         <span className={`text-[10px] font-black px-2 py-1 rounded-lg border uppercase tracking-wider ${getPriorityStyles(t.priority)}`}>{t.priority}</span>
                         <span className={`text-[10px] font-black px-2 py-1 rounded-lg border uppercase tracking-wider ${status.color}`}>{status.label}</span>
-                        <span className="text-slate-400 text-xs font-bold">📅 {new Date(t.dueDate).toLocaleDateString()}</span>
+                        
+                        {/* DUE DATE WITH OVERDUE COLORING */}
+                        <span className={`text-xs font-bold flex items-center gap-1 transition-colors ${isOverdue ? 'text-red-500' : 'text-slate-400'}`}>
+                          {isOverdue ? '⚠️' : '📅'} {new Date(t.dueDate).toLocaleDateString()}
+                          {isOverdue && <span className="text-[10px] font-black uppercase tracking-tighter">(Overdue)</span>}
+                        </span>
+
                         <div className="flex items-center gap-2">
                           <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                             <div className={`h-full transition-all duration-500 ${status.label === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${progressPercent}%` }}></div>
@@ -368,7 +387,6 @@ const ProjectDetails = ({ currentUserId, userRole }) => {
             </div>
             <div className="p-8 overflow-y-auto custom-scrollbar space-y-8">
               
-              {/* UPLOAD SECTION: Now visible to Admins, Project Creators, AND Contributors */}
               {(canManage || userRole === "Contributor") && (
                 <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100">
                   <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-3 text-center">Upload to Task Resources</label>
@@ -391,7 +409,6 @@ const ProjectDetails = ({ currentUserId, userRole }) => {
                    taskFiles.length > 0 ? taskFiles.map(file => {
                      const uploaderId = (file.uploadedByUserId || file.userId || "").toString().toLowerCase();
                      const myId = (currentUserId || "").toString().toLowerCase();
-                     // Users can delete if they are managers OR if they are the uploader
                      const showDelete = canManage || (uploaderId === myId && myId !== "");
 
                      return (

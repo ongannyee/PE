@@ -62,7 +62,7 @@ function Sidebar() {
           </div>
           <div>
             <h1 className="text-xl font-bold">Project UWU</h1>
-            <p className="text-blue-200 text-xs">Management Tool</p>
+            <p className="text-blue-200 text-xs">Task Management Tool</p>
           </div>
         </div>
       </div>
