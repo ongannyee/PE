@@ -1,42 +1,141 @@
 import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { fetchProjects } from "./API/ProjectAPI";
-import Header from "./components/Header";
-import Sidebar from "./components/Sidebar";
+
+// Layout & Auth
+import Layout from "./components/Layout";
+import LoginPage from "./components/LoginPage";
+
+// Pages
 import ProjectPage from "./components/ProjectPage";
 import AddProjectPage from "./components/AddProjectPage";
 import ProjectTimelinePage from "./components/ProjectTimeLine";
 import UserTasks from './components/UserTasks';
 import ProjectDetails from "./components/ProjectDetails";
-import LoginPage from "./components/LoginPage";
 import StatisticsPage from "./components/StatisticsPage";
 
-function App() {
-  const [user, setUser] = useState(null); 
-  const [activePage, setActivePage] = useState("projects");
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [projects, setProjects] = useState([]);
+/**
+ * We wrap the inner logic in a separate component because 'useNavigate' 
+ * must be used inside a <BrowserRouter> context.
+ */
+function AppContent({ user, setUser, projects, loadProjects, handleLogout }) {
+  const navigate = useNavigate();
 
+  // This is the function that was missing/undefined
+  const handleNavigateToProject = (projectId) => {
+    console.log("App: Navigating to project detail page for ID:", projectId);
+    if (projectId) {
+      navigate(`/projects/${projectId}`);
+    }
+  };
+
+  return (
+    <Routes>
+      {/* Main Application Layout */}
+      <Route 
+        path="/" 
+        element={<Layout user={user} onLogout={handleLogout} />}
+      >
+        {/* Default Page (Dashboard/Projects) */}
+        <Route 
+          index 
+          element={
+            <ProjectPage 
+              currentUserId={user.id} 
+              userRole={user.role} 
+              onRefresh={loadProjects} 
+            />
+          } 
+        />
+
+        {/* Project List */}
+        <Route 
+          path="projects" 
+          element={
+            <ProjectPage 
+              currentUserId={user.id} 
+              userRole={user.role} 
+              onRefresh={loadProjects} 
+            />
+          } 
+        />
+
+        {/* Project Details with ID parameter */}
+        <Route 
+          path="projects/:projectId" 
+          element={
+            <ProjectDetails 
+              currentUserId={user.id} 
+              userRole={user.role}
+            />
+          } 
+        />
+
+        {/* Statistics */}
+        <Route 
+          path="statistics" 
+          element={<StatisticsPage currentUserId={user.id} />} 
+        />
+
+        {/* Add Project */}
+        <Route 
+          path="add-project" 
+          element={<AddProjectPage currentUserId={user.id} />} 
+        />
+
+        {/* Timeline */}
+        <Route 
+          path="timeline" 
+          element={<ProjectTimelinePage />} 
+        />
+
+        {/* My Tasks */}
+        <Route 
+          path="my-tasks" 
+          element={
+            <UserTasks 
+              currentUserId={user.id} 
+              projects={projects} 
+              onNavigate={handleNavigateToProject}
+            />
+          } 
+        />
+
+        {/* Fallback for unknown routes */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
+  );
+}
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 1. Auth Initialization
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const storedToken = localStorage.getItem("authToken");
     if (storedUser && storedToken) {
-        try {
-            setUser(JSON.parse(storedUser));
-        } catch (e) {
-            localStorage.clear();
-        }
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.clear();
+      }
     }
+    setLoading(false);
   }, []);
 
+  // 2. Load Projects when user is available
   useEffect(() => {
     if (user && user.id) {
       loadProjects();
     }
-  }, [user]); 
+  }, [user]);
 
   const loadProjects = async () => {
     try {
-      // Pass the required arguments to your API function for RBAC
       const data = await fetchProjects(user.id, user.role);
       setProjects(data || []);
     } catch (err) {
@@ -44,58 +143,28 @@ function App() {
     }
   };
 
-  const handleProjectClick = (project) => {
-    setSelectedProject(project);    
-    setActivePage("project-details"); 
-  };
-
-  const handleJumpToProject = (projectId) => {
-    const targetProject = projects.find(p => p.id === projectId || p.projectId === projectId);
-    if (targetProject) {
-      setSelectedProject(targetProject);
-      setActivePage("project-details");
-    }
-  };
-
   const handleLogout = () => {
-      localStorage.clear();
-      setUser(null);
+    localStorage.clear();
+    setUser(null);
   };
 
+  if (loading) return null;
+
+  // If not logged in, show login page only
   if (!user) {
     return <LoginPage onLogin={(userData) => setUser(userData)} />;
   }
 
-  const renderContent = () => {
-    switch (activePage) {
-      case "projects":
-        return <ProjectPage currentUserId={user.id} userRole={user.role} onClick={handleProjectClick} onRefresh={loadProjects} />;
-      case "statistics":
-        return <StatisticsPage currentUserId={user.id} />;
-      case "project-details":
-        return <ProjectDetails project={selectedProject} onBack={() => setActivePage("projects")} currentUserId={user.id} userRole={user.role}/>;
-      case "add-project":
-        return <AddProjectPage setActivePage={setActivePage} currentUserId={user.id} />;
-      case "project-timeline":
-        return <ProjectTimelinePage />;
-      case "my-tasks":
-         return <UserTasks currentUserId={user.id} projects={projects} onNavigate={handleJumpToProject} />;
-      default:
-        return <ProjectPage currentUserId={user.id} userRole={user.role} onClick={handleProjectClick} onRefresh={loadProjects} />;
-    }
-  };
-
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar activePage={activePage} setActivePage={setActivePage} />
-      <div className="flex-1 flex flex-col">
-        <div className="flex justify-between items-center bg-white shadow p-4">
-             <Header title={`Welcome, ${user.username} (${user.role})`} />
-             <button onClick={handleLogout} className="text-red-500 text-sm font-bold hover:underline">Logout</button>
-        </div>
-        <main className=" flex-1 overflow-auto">{renderContent()}</main>
-      </div>
-    </div>
+    <BrowserRouter>
+      <AppContent 
+        user={user} 
+        setUser={setUser} 
+        projects={projects} 
+        loadProjects={loadProjects} 
+        handleLogout={handleLogout} 
+      />
+    </BrowserRouter>
   );
 }
 

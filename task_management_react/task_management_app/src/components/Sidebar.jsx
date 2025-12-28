@@ -1,7 +1,10 @@
-function Sidebar({ activePage, setActivePage }) {
+import React from 'react';
+import { NavLink } from "react-router-dom";
+
+function Sidebar() {
   const menuItems = [
     { 
-      id: "my-tasks", 
+      path: "/my-tasks", 
       label: "My Tasks",
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -10,7 +13,7 @@ function Sidebar({ activePage, setActivePage }) {
       )
     },
     { 
-      id: "statistics",
+      path: "/statistics",
       label: "Statistics",
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -19,7 +22,7 @@ function Sidebar({ activePage, setActivePage }) {
       )
     },
     { 
-      id: "projects", 
+      path: "/projects", 
       label: "Project List",
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,7 +31,7 @@ function Sidebar({ activePage, setActivePage }) {
       )
     },
     { 
-      id: "add-project", 
+      path: "/add-project", 
       label: "Add Project",
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,7 +40,7 @@ function Sidebar({ activePage, setActivePage }) {
       )
     },
     { 
-      id: "project-timeline", 
+      path: "/timeline", 
       label: "Timeline",
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,31 +70,34 @@ function Sidebar({ activePage, setActivePage }) {
       {/* Navigation Menu */}
       <nav className="flex-1 p-4">
         <ul className="space-y-2">
-          {menuItems.map((item) => {
-            const isActive = activePage === item.id;
-            return (
-              <li key={item.id}>
-                <button
-                  onClick={() => setActivePage(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+          {menuItems.map((item) => (
+            <li key={item.path}>
+              <NavLink
+                to={item.path}
+                className={({ isActive }) => 
+                  `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                     isActive
                       ? "bg-white text-blue-700 shadow-lg transform scale-[1.02]"
                       : "text-blue-100 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <span className={`flex-shrink-0 ${isActive ? "text-blue-600" : ""}`}>
-                    {item.icon}
-                  </span>
-                  <span className={`font-medium ${isActive ? "font-semibold" : ""}`}>
-                    {item.label}
-                  </span>
-                  {isActive && (
-                    <div className="ml-auto w-2 h-2 bg-blue-600 rounded-full"></div>
-                  )}
-                </button>
-              </li>
-            );
-          })}
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <span className={`flex-shrink-0 ${isActive ? "text-blue-600" : ""}`}>
+                      {item.icon}
+                    </span>
+                    <span className={`font-medium ${isActive ? "font-semibold" : ""}`}>
+                      {item.label}
+                    </span>
+                    {isActive && (
+                      <div className="ml-auto w-2 h-2 bg-blue-600 rounded-full"></div>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            </li>
+          ))}
         </ul>
       </nav>
 

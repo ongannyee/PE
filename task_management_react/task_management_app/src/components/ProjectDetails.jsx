@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import AddTaskForm from './AddTaskForm';
 import UpdateTaskModal from './UpdateTaskModal';
 import SubtaskList from './SubtaskList';
@@ -8,13 +9,18 @@ import ProjectBarChart from './ProjectBarChart';
 import ProjectLineChart from './ProjectLineChart';
 import DataTable from './DataTable';
 
-import { fetchProjectTasks, fetchProjectMembers } from '../API/ProjectAPI';
+import { fetchProjectTasks, fetchProjectMembers, fetchProjects } from '../API/ProjectAPI';
 import { fetchUserTasks } from '../API/UserAPI'; 
-import { deleteTask, fetchSubTasksByTask, fetchTaskAttachments } from '../API/TaskItemAPI';
+import { deleteTask, fetchSubTasksByTask } from '../API/TaskItemAPI';
+import { fetchTaskAttachments } from '../API/TaskItemAPI';
 import { fetchSubTaskAttachments } from '../API/SubtaskAPI';
 import { uploadToTask, deleteAttachment } from '../API/AttachmentAPI';
 
-const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
+const ProjectDetails = ({ currentUserId, userRole }) => {
+  const { projectId } = useParams();
+  const navigate = useNavigate();
+  
+  const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
   const [memberWorkloads, setMemberWorkloads] = useState([]); 
@@ -24,6 +30,7 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
   const [selectedTaskForEdit, setSelectedTaskForEdit] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSortedByPriority, setIsSortedByPriority] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [fileTargetTask, setFileTargetTask] = useState(null);
@@ -35,8 +42,37 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
 
   const priorityWeight = { 'Urgent': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
 
-  // RBAC Check: Admin or Project Manager (Creator)
+  useEffect(() => {
+    let isMounted = true;
+    const getProjectInfo = async () => {
+      try {
+        setIsLoading(true);
+        const all = await fetchProjects(currentUserId, userRole);
+        const match = all.find(p => (p.id || p.projectId || p.ProjectId) === projectId);
+        
+        if (isMounted) {
+          if (match) {
+            setProject(match);
+          } else {
+            console.error("Project not found in user's authorized list");
+            navigate('/projects'); 
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch project info", err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    if (projectId && currentUserId) {
+      getProjectInfo();
+    }
+    return () => { isMounted = false; };
+  }, [projectId, currentUserId, userRole, navigate]);
+
   const canManage = useMemo(() => {
+    if (!project) return false;
     if (userRole === "Admin") return true;
     const creatorId = (project.createdByUserId || project.CreatedByUserId || "").toLowerCase();
     const myId = (currentUserId || "").toLowerCase();
@@ -49,20 +85,21 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
       if (completed > 0) return 'In Progress';
       return 'To Do';
     }
-    if (t.status === 2 || t.status === 'Completed' || t.status === 'Done') return 'Completed';
-    if (t.status === 1 || t.status === 'InProgress' || t.status === 'In Progress') return 'In Progress';
+    const s = String(t.status ?? "").toLowerCase();
+    if (s === '2' || s === 'completed' || s === 'done') return 'Completed';
+    if (s === '1' || s === 'inprogress' || s === 'in progress') return 'In Progress';
     return 'To Do';
   };
 
   const loadInitialData = useCallback(async () => {
-    if (!project || !project.id) return;
+    if (!projectId) return;
     try {
       const [taskData, memberData] = await Promise.all([
-        fetchProjectTasks(project.id),
-        fetchProjectMembers(project.id)
+        fetchProjectTasks(projectId),
+        fetchProjectMembers(projectId)
       ]);
 
-      const tasksWithProgress = await Promise.all(taskData.map(async (t) => {
+      const tasksWithProgress = await Promise.all((taskData || []).map(async (t) => {
         const subs = await fetchSubTasksByTask(t.id);
         const total = subs.length;
         const completed = subs.filter(s => s.isCompleted).length;
@@ -82,7 +119,7 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
       const workloadResults = await Promise.all((memberData || []).map(async (m) => {
         const mId = m.id || m.userId || m.guid;
         const userTasks = await fetchUserTasks(mId);
-        const projectSpecificTasks = userTasks.filter(ut => ut.projectId === project.id);
+        const projectSpecificTasks = userTasks.filter(ut => (ut.projectId || ut.ProjectId) === projectId);
 
         return {
           name: m.username || 'User',
@@ -96,7 +133,7 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
     } catch (err) {
       console.error("Error loading project details:", err);
     }
-  }, [project]);
+  }, [projectId]);
 
   useEffect(() => {
     loadInitialData();
@@ -109,7 +146,7 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
       { name: 'To Do', value: tasks.filter(t => t.calculatedStatus === 'To Do').length },
     ];
 
-    const sortedForLine = [...tasks].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+    const sortedForLine = [...tasks].filter(t => t.dueDate).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
     const line = sortedForLine.map((t, idx) => ({
       date: new Date(t.dueDate).toLocaleDateString(),
       actual: Math.round((tasks.filter(tk => tk.calculatedStatus === 'Completed' && new Date(tk.dueDate) <= new Date(t.dueDate)).length / (tasks.length || 1)) * 100),
@@ -148,37 +185,24 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
     finally { setIsFilesLoading(false); }
   };
 
-  // UPDATED: Added currentUserId to the upload call
   const handleUploadToTask = async () => {
-    if (!uploadFile || !fileTargetTask) return;
-    if (!currentUserId) {
-        alert("Session expired. Please log in.");
-        return;
-    }
-
+    if (!uploadFile || !fileTargetTask || !currentUserId) return;
     setIsUploading(true);
     try {
       await uploadToTask(uploadFile, fileTargetTask.id, currentUserId);
       setUploadFile(null);
       const updated = await fetchTaskAttachments(fileTargetTask.id);
       setTaskFiles(updated || []);
-    } catch (err) { 
-        alert(err.response?.data || "Upload failed."); 
-    }
+    } catch (err) { alert(err.response?.data || "Upload failed."); }
     finally { setIsUploading(false); }
   };
 
-  // UPDATED: Added currentUserId to the delete call
   const handleDeleteFile = async (fileId) => {
-    if (!window.confirm("Delete this file permanently?")) return;
-    if (!currentUserId) return;
-
+    if (!window.confirm("Delete this file permanently?") || !currentUserId) return;
     try {
       await deleteAttachment(fileId, currentUserId);
       setTaskFiles(prev => prev.filter(f => (f.id || f.attachmentId || f.attachmentGuid) !== fileId));
-    } catch (err) { 
-        alert(err.response?.data || "Delete failed."); 
-    }
+    } catch (err) { alert(err.response?.data || "Delete failed."); }
   };
 
   const toggleTaskExpand = (id) => setExpandedTaskId(expandedTaskId === id ? null : id);
@@ -197,6 +221,15 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
     }
   };
 
+  if (isLoading) return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-bold animate-pulse">Synchronizing Project Data...</p>
+    </div>
+  );
+
+  if (!project) return null;
+
   const displayedTasks = isSortedByPriority
     ? [...tasks].sort((a, b) => (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0))
     : tasks;
@@ -205,14 +238,13 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
     <div className="p-8 max-w-6xl mx-auto bg-gray-50 min-h-screen text-left">
       {/* HEADER SECTION */}
       <div className="flex justify-between items-center mb-8">
-        <button onClick={onBack} className="group flex items-center gap-2 text-slate-500 hover:text-blue-600 font-medium transition-colors">
+        <button onClick={() => navigate('/projects')} className="group flex items-center gap-2 text-slate-500 hover:text-blue-600 font-medium transition-colors">
           <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Projects
         </button>
         <div className="flex gap-3">
           <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className={`px-4 py-2.5 rounded-xl font-bold transition-all border flex items-center gap-2 ${isSortedByPriority ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-400'}`}>
             <span>{isSortedByPriority ? '🔼 Priority Sorted' : 'Sort by Priority'}</span>
           </button>
-          
           {canManage && (
             <button onClick={() => setIsAddModalOpen(true)} className="bg-slate-900 hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-sm transition-all">+ New Task</button>
           )}
@@ -301,7 +333,7 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
                     </div>
                     <div className="flex-1 p-10 bg-white/40">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-6">Discussion Board</span>
-                      <CommentSection taskGuid={t.id} taskName={t.title} currentUserId={currentUserId} projectId={project.id} />
+                      <CommentSection taskGuid={t.id} taskName={t.title} currentUserId={currentUserId} projectId={projectId} />
                     </div>
                   </div>
                 )}
@@ -336,15 +368,16 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
             </div>
             <div className="p-8 overflow-y-auto custom-scrollbar space-y-8">
               
-              {canManage && (
+              {/* UPLOAD SECTION: Now visible to Admins, Project Creators, AND Contributors */}
+              {(canManage || userRole === "Contributor") && (
                 <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100">
-                  <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-3 text-center">Upload to Task Root</label>
+                  <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-3 text-center">Upload to Task Resources</label>
                   <div className="flex gap-3">
                     <input type="file" id="task-direct-upload" className="hidden" onChange={(e) => setUploadFile(e.target.files[0])} />
                     <label htmlFor="task-direct-upload" className="flex-1 bg-white border-2 border-dashed border-blue-200 rounded-2xl p-4 text-sm font-bold text-slate-500 text-center cursor-pointer hover:border-blue-400 transition-all truncate">
                       {uploadFile ? `📄 ${uploadFile.name}` : "Drop file here or click to browse"}
                     </label>
-                    <button onClick={handleUploadToTask} disabled={!uploadFile || isUploading} className="bg-slate-900 text-white px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest">
+                    <button onClick={handleUploadToTask} disabled={!uploadFile || isUploading} className="bg-slate-900 text-white px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50">
                       {isUploading ? "..." : "Upload"}
                     </button>
                   </div>
@@ -356,16 +389,19 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
                 <div className="space-y-2">
                   {isFilesLoading ? <p className="text-slate-400 text-[10px] animate-pulse">Checking for files...</p> : 
                    taskFiles.length > 0 ? taskFiles.map(file => {
-                     // Ownership logic: Manager or the specific uploader
                      const uploaderId = (file.uploadedByUserId || file.userId || "").toString().toLowerCase();
                      const myId = (currentUserId || "").toString().toLowerCase();
+                     // Users can delete if they are managers OR if they are the uploader
                      const showDelete = canManage || (uploaderId === myId && myId !== "");
 
                      return (
                       <div key={file.id || file.attachmentId} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <span className="text-2xl opacity-50">📄</span>
-                          <p className="text-xs font-bold text-slate-800 truncate">{file.fileName}</p>
+                          <div className="overflow-hidden">
+                            <p className="text-xs font-bold text-slate-800 truncate">{file.fileName}</p>
+                            <p className="text-[9px] text-slate-400 font-medium">Uploaded by: {file.uploaderName || 'Team Member'}</p>
+                          </div>
                         </div>
                         <div className="flex gap-3 ml-4 whitespace-nowrap">
                           <a href={`http://localhost:5017${file.fileUrl}`} target="_blank" rel="noreferrer" className="text-[9px] font-black text-blue-600 uppercase hover:underline">Download</a>
@@ -410,7 +446,7 @@ const ProjectDetails = ({ project, onBack, currentUserId, userRole }) => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg p-8">
             <h2 className="text-3xl font-black text-slate-900 mb-6 tracking-tight">New Task</h2>
-            <AddTaskForm userId={currentUserId} defaultProjectId={project.id} availableMembers={members} onTaskAdded={() => { loadInitialData(); setIsAddModalOpen(false); }} />
+            <AddTaskForm userId={currentUserId} defaultProjectId={projectId} availableMembers={members} onTaskAdded={() => { loadInitialData(); setIsAddModalOpen(false); }} />
             <button onClick={() => setIsAddModalOpen(false)} className="mt-4 w-full text-slate-400 text-xs font-black uppercase tracking-widest">Close</button>
           </div>
         </div>
