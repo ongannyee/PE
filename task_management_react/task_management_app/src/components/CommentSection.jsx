@@ -37,6 +37,7 @@ const CommentSection = ({ taskGuid, taskName, currentUserId, projectId }) => {
   const loadMembers = async () => {
     try {
       const data = await fetchProjectMembers(projectId);
+      // Ensure we are getting an array
       setUsers(Array.isArray(data) ? data : []);
     } catch (err) { console.error("Error loading members:", err); }
   };
@@ -77,13 +78,17 @@ const CommentSection = ({ taskGuid, taskName, currentUserId, projectId }) => {
     const recipientEmail = mentionedUser.email || mentionedUser.Email;
     const recipientName = mentionedUser.username || mentionedUser.Username;
 
-    if (!recipientEmail) return;
+    if (!recipientEmail) {
+      console.error("CRITICAL: Email is null for user", mentionedUser.username);
+      alert(`Mentioned user ${recipientName} has no email address on file. Notification skipped.`);
+      return;
+    }
 
     const templateParams = {
       to_email: recipientEmail,
       to_name: recipientName,
       from_name: authorName,
-      task_name: taskName || "Project Task", // Passed from parent
+      task_name: taskName || "Project Task",
       message: commentText,
       task_link: window.location.href 
     };
@@ -94,6 +99,7 @@ const CommentSection = ({ taskGuid, taskName, currentUserId, projectId }) => {
         'template_2gacbks', 
         templateParams
       );
+      console.log("Email successfully sent to:", recipientEmail);
     } catch (error) {
       console.error('EmailJS Error:', error);
     }
@@ -111,13 +117,13 @@ const CommentSection = ({ taskGuid, taskName, currentUserId, projectId }) => {
         userId: currentUserId 
       });
       
-      const authorName = res.username || "A teammate";
+      const authorName = res.username || res.Username || "A teammate";
       const mentions = commentText.match(/@(\w+)/g) || [];
       
       mentions.forEach(mention => {
-        const username = mention.substring(1).toLowerCase();
+        const usernameInComment = mention.substring(1).toLowerCase();
         const userToNotify = users.find(u => 
-          (u.username || u.Username || "").toLowerCase() === username
+          (u.username || u.Username || "").toLowerCase() === usernameInComment
         );
 
         if (userToNotify) {
@@ -127,8 +133,11 @@ const CommentSection = ({ taskGuid, taskName, currentUserId, projectId }) => {
 
       setCommentText('');
       await loadComments(); 
-    } catch (err) { console.error("Post Error:", err); } 
-    finally { setIsSending(false); }
+    } catch (err) { 
+        console.error("Post Error:", err); 
+    } finally { 
+        setIsSending(false); 
+    }
   };
 
   const handleDelete = async (commentId) => {
@@ -203,11 +212,12 @@ const CommentSection = ({ taskGuid, taskName, currentUserId, projectId }) => {
               Project Members
             </div>
             <ul className="max-h-40 overflow-y-auto">
-              {filteredUsers.map(user => {
+              {filteredUsers.map((user, idx) => {
                 const uname = user.username || user.Username;
+                const uid = user.userId || user.UserId || user.id || idx;
                 return (
                   <li 
-                    key={user.id || user.UserId} 
+                    key={uid} 
                     onMouseDown={(e) => { e.preventDefault(); insertMention(uname); }}
                     className="px-4 py-3 text-sm text-slate-600 hover:bg-blue-600 hover:text-white cursor-pointer transition-colors flex items-center gap-2"
                   >

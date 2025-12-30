@@ -5,25 +5,22 @@ namespace TaskManagement.API.Models.Domain
 {
     public class Comment
     {
+        // Comment data
         [Key]
         public Guid Id { get; set; }
         
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int CommentId { get; set; } // Lecturer's requirement
-        
+        public int CommentId { get; set; }
         public string Text { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Foreign Key for Task
+        // Foreign Key
         public Guid TaskId { get; set; }
-        
         [ForeignKey("TaskId")]
         public virtual TaskItem TaskItem { get; set; } = null!;
 
-        // Foreign Key for User
         public Guid UserId { get; set; }
-        
-        [ForeignKey("UserId")] // This fixes the UserId1 / Unknown User issue
+        [ForeignKey("UserId")]
         public virtual User User { get; set; } = null!;
     }
 }

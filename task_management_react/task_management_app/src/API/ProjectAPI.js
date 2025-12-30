@@ -4,7 +4,6 @@ const API_URL = "http://localhost:5017/api/project";
 const USER_API_URL = "http://localhost:5017/api/user";
 
 export const fetchProjects = async (currentUserId, userRole) => {
-    // FIX: Only attempt user-specific URL if currentUserId actually exists
     const url = (userRole === "Admin" || !currentUserId)
         ? API_URL 
         : `${USER_API_URL}/${currentUserId}/projects`;

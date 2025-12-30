@@ -14,14 +14,9 @@ public class User
     public string Role { get; set; } = "User";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Projects this specific user created/owns
-    public ICollection<Project> OwnedProjects { get; set; } = new List<Project>();
-
-    // --- ADDED THIS ---
-    // Files uploaded by this user
-    public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
-
     // Foreign key related
+    public ICollection<Project> OwnedProjects { get; set; } = new List<Project>();
+    public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
     public ICollection<ProjectMember> ProjectMembers { get; set; } = new List<ProjectMember>();
     public ICollection<TaskAssignment> TaskAssignments { get; set; } = new List<TaskAssignment>();
     public ICollection<SubTaskAssignment> SubTaskAssignments { get; set; } = new List<SubTaskAssignment>();

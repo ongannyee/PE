@@ -5,7 +5,7 @@ public class CommentDTO
     public int CommentId { get; set; }
     public string Text { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
-    public string Username { get; set; } = string.Empty; // Just show the name, not the whole User object
+    public string Username { get; set; } = string.Empty;
     public Guid UserId { get; set; }
 }
 

@@ -25,7 +25,7 @@ namespace TaskManagement.API.Controllers
                 UserId = u.UserId, 
                 Username = u.Username, 
                 Email = u.Email,
-                Role = u.Role // Include Role
+                Role = u.Role
             }).ToList();
             return Ok(usersDTO);
         }
@@ -42,7 +42,7 @@ namespace TaskManagement.API.Controllers
                 UserId = user.UserId, 
                 Username = user.Username, 
                 Email = user.Email,
-                Role = user.Role // Include Role
+                Role = user.Role
             });
         }
 
@@ -54,7 +54,7 @@ namespace TaskManagement.API.Controllers
                 Username = registerRequestDTO.Username, 
                 Email = registerRequestDTO.Email, 
                 PasswordHash = registerRequestDTO.Password, 
-                Role = "User", // All new registrations are default Users
+                Role = "User",
                 CreatedAt = DateTime.UtcNow 
             };
             
@@ -72,8 +72,6 @@ namespace TaskManagement.API.Controllers
             
             user.Username = updateDto.Username;
             user.Email = updateDto.Email;
-            
-            // Note: We generally don't let users update their own Role via a standard UpdateProfile DTO
             
             await _context.SaveChangesAsync();
             return Ok(user);
@@ -95,10 +93,6 @@ namespace TaskManagement.API.Controllers
         [HttpGet("{userId:guid}/projects")]
         public async Task<IActionResult> GetUserProjects(Guid userId)
         {
-            // Logic: If user is Admin, they might want to see ALL projects.
-            // However, this specific endpoint is usually for "My Projects".
-            // We can add a check here if needed, but for now, we keep it to membership.
-            
             var projects = await _context.ProjectMembers
                 .Where(pm => pm.UserId == userId)
                 .Include(pm => pm.Project)

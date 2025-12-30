@@ -5,6 +5,7 @@ namespace TaskManagement.API.Models.Domain
 {
     public class Project
     {
+        // Project data
         [Key]
         public Guid Id { get; set; }
         public int ProjectId { get; set; }
@@ -14,13 +15,12 @@ namespace TaskManagement.API.Models.Domain
         public DateTime? EndDate { get; set; }
         public bool IsArchived { get; set; }
 
-        // --- THE FOREIGN KEY ---
+        // Foreign Key
         public required Guid CreatedByUserId { get; set; } 
-
-        // --- THE NAVIGATION PROPERTY ---
         [ForeignKey("CreatedByUserId")]
         public User Creator { get; set; } = null!;
 
+        // Foreign key related
         public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
         public ICollection<ProjectMember> ProjectMembers { get; set; } = new List<ProjectMember>();
     }

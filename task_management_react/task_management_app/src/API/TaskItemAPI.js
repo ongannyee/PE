@@ -50,7 +50,6 @@ export const removeUserFromTask = async (assignmentData) => {
 };
 
 // 8. NEW: GET My Assigned Tasks (For the "My Tasks" tab)
-// Matches: [HttpGet("user/{userId}")]
 export const fetchMyTasks = async (userGuid) => {
     const response = await axios.get(`${API_URL}/user/${userGuid}`);
     return response.data;

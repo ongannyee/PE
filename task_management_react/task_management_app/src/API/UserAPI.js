@@ -10,7 +10,6 @@ export const registerUser = async (userData) => {
 };
 
 export const loginUser = async (user) => {
-  // MUST match the controller route: api/Auth/login
   const response = await fetch(`http://localhost:5017/api/Auth/login`, { 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

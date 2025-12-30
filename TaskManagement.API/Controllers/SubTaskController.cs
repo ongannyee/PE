@@ -112,7 +112,7 @@ namespace TaskManagement.API.Controllers
                     UserId = sa.User.UserId,
                     Username = sa.User.Username,
                     Email = sa.User.Email,
-                    Role = sa.User.Role // FIXED: Added Role to resolve CS9035 build error
+                    Role = sa.User.Role
                 })
                 .ToListAsync();
 

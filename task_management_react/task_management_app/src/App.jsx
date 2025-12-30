@@ -14,14 +14,10 @@ import UserTasks from './components/UserTasks';
 import ProjectDetails from "./components/ProjectDetails";
 import StatisticsPage from "./components/StatisticsPage";
 
-/**
- * We wrap the inner logic in a separate component because 'useNavigate' 
- * must be used inside a <BrowserRouter> context.
- */
+
 function AppContent({ user, setUser, projects, loadProjects, handleLogout }) {
   const navigate = useNavigate();
 
-  // This is the function that was missing/undefined
   const handleNavigateToProject = (projectId) => {
     console.log("App: Navigating to project detail page for ID:", projectId);
     if (projectId) {

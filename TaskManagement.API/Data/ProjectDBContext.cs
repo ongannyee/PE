@@ -96,14 +96,13 @@ namespace TaskManagement.API.Data
                     .OnDelete(DeleteBehavior.NoAction); 
             });
 
-            // --- 6. ATTACHMENT CONFIG (UPDATED TO USE GUID FK) ---
+            // --- 6. ATTACHMENT CONFIG ---
             modelBuilder.Entity<Attachment>(entity =>
             {
                 entity.HasKey(a => a.Id);
                 entity.Property(a => a.AttachmentId).ValueGeneratedOnAdd();
                 entity.HasIndex(a => a.AttachmentId).IsUnique();
 
-                // Relationship to Uploader (User) using Guid FK
                 entity.HasOne(a => a.UploadedByUser)
                       .WithMany(u => u.Attachments) 
                       .HasForeignKey(a => a.UploadedByUserId)

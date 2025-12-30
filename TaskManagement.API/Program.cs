@@ -56,7 +56,6 @@ if (!Directory.Exists(uploadsPath))
 app.UseHttpsRedirection();
 
 // --- STATIC FILES CONFIG ---
-// This allows React to access http://localhost:5017/Uploads/filename.jpg
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsPath),

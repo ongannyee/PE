@@ -2,6 +2,7 @@ namespace TaskManagement.API.Models.Domain
 {
     public class SubTaskAssignment
     {
+        // Association Table for Users and SubTasks
         public Guid UserId { get; set; }
         public User User { get; set; } = null!;
 

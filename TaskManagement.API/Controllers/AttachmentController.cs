@@ -24,7 +24,7 @@ namespace TaskManagement.API.Controllers
                     a.TaskId,
                     a.SubTaskId,
                     a.UploadedAt,
-                    a.UploadedByUserId // Ensure this is explicitly sent
+                    a.UploadedByUserId
                 })
                 .ToListAsync();
             return Ok(attachments);
@@ -110,8 +110,7 @@ namespace TaskManagement.API.Controllers
 
             _context.Attachments.Add(attachment);
             await _context.SaveChangesAsync();
-            
-            // Return explicit object so frontend knows the property names
+
             return Ok(new {
                 attachment.Id,
                 attachment.FileName,

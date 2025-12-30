@@ -8,7 +8,7 @@ using TaskManagement.API.Models.DTOs;
 namespace TaskManagement.API.Controllers
 {
     [ApiController]
-    [Route("api/task")] // Hardcoded to 'api/task' to match your Postman tests
+    [Route("api/task")]
     public class TaskController(ProjectDBContext dBContext) : ControllerBase
     {
         private readonly ProjectDBContext _context = dBContext;
@@ -185,7 +185,7 @@ namespace TaskManagement.API.Controllers
                     UserId = ta.User.UserId, 
                     Username = ta.User.Username, 
                     Email = ta.User.Email,
-                    Role = ta.User.Role // FIXED: Added Role to resolve CS9035
+                    Role = ta.User.Role
                 })
                 .ToListAsync();
 

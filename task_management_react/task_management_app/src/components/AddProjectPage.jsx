@@ -65,22 +65,27 @@ const AddProjectPage = ({ setActivePage, currentUserId, userRole }) => {
     return isNotSelected && matchesSearch;
   });
 
-  const sendAssignmentEmails = async (projectData, usersToNotify) => {
-    const emailPromises = usersToNotify.map(user => {
-      return emailjs.send(
-        'service_vb2sbtt', 
-        'template_0bcks3e', 
-        {
-          to_name: user.username,
-          to_email: user.email,
-          project_name: projectData.projectName,
-          project_goal: projectData.projectGoal,
-          start_date: projectData.startDate
-        }
-      );
-    });
-    return Promise.all(emailPromises);
-  };
+  const sendAssignmentEmails = async (projectData, usersToNotify, newProjectId) => {
+      // Construct the absolute link to the project
+      // Example: http://localhost:3000/project/e7e1cfb0...
+      const projectLink = `${window.location.origin}/projects/${newProjectId}`;
+
+      const emailPromises = usersToNotify.map(user => {
+        return emailjs.send(
+          'service_vb2sbtt', 
+          'template_0bcks3e', 
+          {
+            to_name: user.username,
+            to_email: user.email,
+            project_name: projectData.projectName,
+            project_goal: projectData.projectGoal,
+            start_date: projectData.startDate,
+            project_link: projectLink // <--- Add this variable
+          }
+        );
+      });
+      return Promise.all(emailPromises);
+    };
 
   const handleSubmit = async (e) => {
     e.preventDefault();

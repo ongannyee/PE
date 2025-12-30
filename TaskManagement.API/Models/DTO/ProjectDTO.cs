@@ -10,12 +10,8 @@ namespace TaskManagement.API.Models.DTO
         public DateTime? EndDate { get; set; }
         public bool IsArchived { get; set; }
 
-        // --- UPDATED TO GUID ---
-        // Matches the DB Foreign Key type
-        public Guid CreatedByUserId { get; set; } 
 
-        // --- NEW PROPERTY ---
-        // Allows React to show "Manager: John Doe" without extra API calls
+        public Guid CreatedByUserId { get; set; } 
         public string? CreatorName { get; set; }
     }
 }

@@ -4,14 +4,14 @@ namespace TaskManagement.API.Models.Domain
 {
     public class ProjectMember
     {
-        public Guid UserId { get; set; } // Matching Guid of User
+        // Association Table for Users and Projects
+        public Guid UserId { get; set; }
         public User User { get; set; } = null!;
 
-        public Guid ProjectId { get; set; } // Matching Guid of Project
+        public Guid ProjectId { get; set; }
         public Project Project { get; set; } = null!;
 
-        // --- NEW PROPERTY FOR ACCESS CONTROL ---
-        // Stores "PM" or "Contributor"
+
         public string ProjectRole { get; set; } = "Contributor"; 
     }
 }

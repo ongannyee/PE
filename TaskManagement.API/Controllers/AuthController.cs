@@ -31,8 +31,8 @@ namespace TaskManagement.API.Controllers
                 Id = Guid.NewGuid(),
                 Username = request.Username,
                 Email = request.Email,
-                PasswordHash = request.Password, // Note: Use hashing in production
-                Role = "User", // Default role for new signups
+                PasswordHash = request.Password,
+                Role = "User",
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -60,7 +60,7 @@ namespace TaskManagement.API.Controllers
                 new Claim("UserId", user.UserId.ToString()), 
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role) // CRITICAL: Adds role to the token
+                new Claim(ClaimTypes.Role, user.Role)
             };
 
             var jwtSettings = _configuration.GetSection("JwtSettings");
@@ -86,7 +86,7 @@ namespace TaskManagement.API.Controllers
                     Id = user.Id, 
                     Username = user.Username, 
                     Email = user.Email,
-                    Role = user.Role // Useful for frontend logic
+                    Role = user.Role
                 } 
             });
         }

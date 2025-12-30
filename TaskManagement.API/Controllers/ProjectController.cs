@@ -101,7 +101,6 @@ namespace TaskManagement.API.Controllers
             var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == projectId);
             if (project == null) return NotFound();
 
-            // RBAC Check: Admin OR Creator
             if (userRole != "Admin" && project.CreatedByUserId != currentUserId)
             {
                 return Forbid("You do not have permission to edit this project.");
@@ -124,7 +123,6 @@ namespace TaskManagement.API.Controllers
             var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == projectId);
             if (project == null) return NotFound();
 
-            // RBAC Check: Admin OR Creator
             if (userRole != "Admin" && project.CreatedByUserId != currentUserId)
             {
                 return Forbid("You do not have permission to delete this project.");
@@ -142,7 +140,6 @@ namespace TaskManagement.API.Controllers
             var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == projectId);
             if (project == null) return NotFound();
 
-            // RBAC Check: Admin OR Creator
             if (userRole != "Admin" && project.CreatedByUserId != currentUserId)
             {
                 return Forbid("You do not have permission to archive this project.");
@@ -195,6 +192,7 @@ namespace TaskManagement.API.Controllers
                     UserId = pm.UserId,
                     ProjectId = pm.ProjectId,
                     Username = pm.User.Username,
+                    Email = pm.User.Email,
                     ProjectRole = pm.ProjectRole
                 })
                 .ToListAsync();
