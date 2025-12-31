@@ -151,7 +151,7 @@ function AnimatedProjectTableItem({
             {isArchived ? "Restore" : "Archive"}
           </button>
         ) : (
-          <span className="text-gray-400 text-[10px] font-medium uppercase">View Only</span>
+          <span className="text-gray-400 text-[10px] font-medium uppercase">CONTRIBUTORS</span>
         )}
       </td>
 

@@ -18,10 +18,6 @@ function Layout({ user, onLogout }) {
         {/* 4. Main Content Area */}
         <main className="flex-1 overflow-y-auto custom-scrollbar relative">
           <div className="p-8 max-w-7xl mx-auto w-full h-full">
-            {/* The Outlet renders the current page. 
-                The layout props (user) can also be passed via context if needed,
-                but standard routing handles the page components via App.js.
-            */}
             <Outlet />
           </div>
         </main>

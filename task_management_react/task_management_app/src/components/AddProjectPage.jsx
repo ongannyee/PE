@@ -19,7 +19,7 @@ const AddProjectPage = ({ setActivePage, currentUserId, userRole }) => {
   const wrapperRef = useRef(null);
 
   useEffect(() => {
-    // Initialize EmailJS with your Public Key
+    // Initialize EmailJS with Public Key
     emailjs.init("eBjUNRbvoFsABoiPC");
 
     const getUsers = async () => {
@@ -66,8 +66,7 @@ const AddProjectPage = ({ setActivePage, currentUserId, userRole }) => {
   });
 
   const sendAssignmentEmails = async (projectData, usersToNotify, newProjectId) => {
-      // Construct the absolute link to the project
-      // Example: http://localhost:3000/project/e7e1cfb0...
+      
       const projectLink = `${window.location.origin}/projects/${newProjectId}`;
 
       const emailPromises = usersToNotify.map(user => {
@@ -80,7 +79,7 @@ const AddProjectPage = ({ setActivePage, currentUserId, userRole }) => {
             project_name: projectData.projectName,
             project_goal: projectData.projectGoal,
             start_date: projectData.startDate,
-            project_link: projectLink // <--- Add this variable
+            project_link: projectLink 
           }
         );
       });
@@ -93,8 +92,6 @@ const AddProjectPage = ({ setActivePage, currentUserId, userRole }) => {
 
     try {
       // 1. Create the project. 
-      // Passing userRole here just in case the backend AddProject implementation 
-      // needs to log or verify the creator's role status.
       const newProject = await addProject({ 
         ...formData, 
         isArchived: false, 

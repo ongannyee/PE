@@ -297,15 +297,13 @@ const SubtaskList = ({ taskGuid, onSubtaskStatusChange, currentUserId, userRole,
             <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
               <div className="space-y-2">
                 {editingSubtask?.attachments?.map(file => {
-                  // MULTI-PROPERY CHECK: Try all possible names coming from C# (uploadedByUserId, uploadedBy, etc)
+
                   const uploaderId = (file.uploadedByUserId || file.userId || file.uploadedBy || file.UploadedByUserId || "").toString().toLowerCase();
                   const myId = (currentUserId || "").toString().toLowerCase();
                   
-                  // Verification: Is current user the PM/Admin OR the person who uploaded it?
                   const isFileOwner = uploaderId === myId && myId !== "";
                   const showDelete = canManage || isFileOwner;
 
-                  // DEBUG LOG: Open Console (F12) to see this output
                   console.log(`File: ${file.fileName} | Uploader: ${uploaderId} | Me: ${myId} | Owner: ${isFileOwner} | canManage: ${canManage}`);
 
                   return (

@@ -37,7 +37,6 @@ const CommentSection = ({ taskGuid, taskName, currentUserId, projectId }) => {
   const loadMembers = async () => {
     try {
       const data = await fetchProjectMembers(projectId);
-      // Ensure we are getting an array
       setUsers(Array.isArray(data) ? data : []);
     } catch (err) { console.error("Error loading members:", err); }
   };

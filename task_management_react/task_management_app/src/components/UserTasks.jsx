@@ -110,9 +110,9 @@ const UserTasks = ({ currentUserId, projects = [], onNavigate }) => {
     return 'Todo';
   };
 
-  // --- REVISED NAVIGATION HANDLER ---
+
   const handleProjectNavigation = (task) => {
-    // According to your log, the property is definitely 'projectId'
+
     const targetId = task.projectId;
 
     console.log("Attempting to navigate to:", targetId);

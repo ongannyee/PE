@@ -1,7 +1,7 @@
 import React from 'react';
 
 function Header({ user, onLogout }) {
-  // Extract initials for the avatar (e.g., "Alex Rivera" -> "AR")
+
   const getInitials = (name) => {
     if (!name) return "?";
     return name

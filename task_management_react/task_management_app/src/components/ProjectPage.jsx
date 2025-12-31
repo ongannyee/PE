@@ -27,7 +27,6 @@ function ProjectPage({ currentUserId, userRole, onRefresh }) {
     }
   }, [currentUserId, userRole]);
 
-  // Live Search Effect: Filters as you type
   useEffect(() => {
     applyFilter(projects, showArchived, search);
   }, [search, showArchived, projects]);

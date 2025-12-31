@@ -138,8 +138,6 @@ const AddTaskForm = ({ userId, onTaskAdded, defaultProjectId, availableMembers =
           className="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
         />
 
-        {/* --- DROPDOWN LOGIC --- */}
-        {/* Removed "&& searchTerm" so it opens on click/focus even if empty */}
         {showSuggestions && (
           <div className="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
             {filteredSuggestions.length > 0 ? (

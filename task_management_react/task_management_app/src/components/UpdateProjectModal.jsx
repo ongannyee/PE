@@ -4,6 +4,7 @@ import { fetchAllUsers } from "../API/UserAPI";
 import { fetchProjectMembers } from "../API/ProjectAPI";
 
 function UpdateProjectModal({ project, onClose, onUpdate, currentUserId, userRole }) {
+  // Extracting the consistent ID to use for the URL link
   const pGuid = project.id || project.Id; 
   const pIntId = project.projectId || project.ProjectId || project.id;
 
@@ -58,6 +59,9 @@ function UpdateProjectModal({ project, onClose, onUpdate, currentUserId, userRol
   }, [pGuid, currentUserId]);
 
   const sendAssignmentEmails = async (usersToNotify) => {
+
+    const projectLink = `${window.location.origin}/projects/${pGuid}`;
+
     const promises = usersToNotify.map(user => emailjs.send(
       'service_vb2sbtt', 
       'template_0bcks3e', 
@@ -66,7 +70,8 @@ function UpdateProjectModal({ project, onClose, onUpdate, currentUserId, userRol
         to_email: user.email,
         project_name: formData.projectName || formData.ProjectName,
         project_goal: formData.projectGoal || formData.ProjectGoal || "Updated project details",
-        start_date: formData.startDate || formData.StartDate
+        start_date: formData.startDate || formData.StartDate,
+        project_link: projectLink 
       }
     ));
     return Promise.all(promises);
@@ -78,17 +83,18 @@ function UpdateProjectModal({ project, onClose, onUpdate, currentUserId, userRol
     setIsSubmitting(true);
 
     try {
-      // Logic for email notifications
+      // Find users who were just added to the project
       const newMembers = selectedUsers.filter(sel => 
         !initialMembers.some(init => init.id === sel.id)
       );
 
       // Trigger the parent update function
-      // It is vital that 'members' contains the FINAL state of the list (added and removed)
       await onUpdate(pIntId, { ...formData, members: selectedUsers });
 
+      // Only send emails if there are actually new members
       if (newMembers.length > 0) {
         await sendAssignmentEmails(newMembers);
+        console.log("Invitation emails sent to new members.");
       }
 
       onClose();
